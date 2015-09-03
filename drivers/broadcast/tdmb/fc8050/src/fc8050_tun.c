@@ -73,9 +73,9 @@ static int fc8050_set_filter(HANDLE hDevice)
 
 	for(i=0; i<10; i++) {
 		msMustWait(5);
-		
+
 		fc8050_read(hDevice, 0x33, &cal_mon);
-		if( (cal_mon & 0xC0) == 0xC0) 
+		if( (cal_mon & 0xC0) == 0xC0)
 			break;
 		fc8050_write(hDevice, 0x32, 0x01);
 		fc8050_write(hDevice, 0x32, 0x09);
@@ -95,9 +95,9 @@ static int fc8050_lband_init(HANDLE hDevice)
 static int fc8050_band3_init(HANDLE hDevice)
 {
 	PRINTF(hDevice, "fc8050_band3_init\r\n");
-	
+
 	fc8050_write(hDevice, 0x00, 0x00);
-	
+
 
 	fc8050_write(hDevice, 0x00, 0x00);
 	fc8050_write(hDevice, 0x02, 0x86);
@@ -160,14 +160,14 @@ int fc8050_tuner_init(HANDLE hDevice, fci_u32 band)
 		res = fc8050_lband_init(hDevice);
 	else if(band == BAND3_TYPE)
 		res = fc8050_band3_init(hDevice);
-	else 
+	else
 		return BBM_NOK;
 
-	if(res != BBM_OK) 
+	if(res != BBM_OK)
 		return res;
 
 	return res;
-}	 
+}
 
 int fc8050_set_freq(HANDLE hDevice, fci_u32 band, fci_u32 f_lo )
 {

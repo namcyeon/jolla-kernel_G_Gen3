@@ -25,7 +25,7 @@ extern    "C"
 #define TCC353X_MAX                 2	/* single, dual */
 #define TCC353X_DIVERSITY_MAX       4	/* single, 2~n diversity */
 
-#define GPIO_NUM_RF_SWITCHING_TCC3530		8
+#define GPIO_NUM_RF_SWITCHING_TCC3530		9
 #define GPIO_NUM_RF_SWITCHING_TCC3531_SINGLE	19
 #define GPIO_NUM_RF_SWITCHING_TCC3531_MASTER	8
 #define GPIO_NUM_RF_SWITCHING_TCC3531_SLAVE	19
@@ -465,6 +465,13 @@ typedef struct {
  * Seg12-13seg_2=    Seg12-13seg_2 =     Seg1--1seg_7     =
  *
  ---------------------------------------------------------------------*/
+
+typedef enum {
+	ENUM_NO_LNA_GAIN_CONTROL = -1,
+	ENUM_LNA_GAIN_LOW,
+	ENUM_LNA_GAIN_HIGH
+} EnumTcc353xLnaGainStatus;
+ 
 #ifdef __cplusplus
 	};
 #endif

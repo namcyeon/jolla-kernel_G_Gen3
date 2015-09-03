@@ -8,10 +8,6 @@
 #include "tcc353x_common.h"
 #include "tcpal_os.h"
 
-/*
-#define _USE_FF_FOR_ALL_DMA_
-*/
-
 I32S Tcc353xTccspiClose(I32S _moduleIndex);
 
 static I32U gTccSpiHanleInit0 = 0;
@@ -113,28 +109,6 @@ I32S Tcc353xAdaptSpiReadWrite (I32S _moduleIndex, I08U * _bufferIn, I08U * _buff
 	    .cs_change = 0,
 	};
 
-#ifdef _USE_FF_FOR_ALL_DMA_
-	if(_size<8) {
-		xfer.len+=48;
-		TcpalMemset(&_bufferIn[_size], 0xff, _size+48);
-	} else if (_size<16) {
-		xfer.len+=40;
-		TcpalMemset(&_bufferIn[_size], 0xff, _size+40);
-	} else if (_size<24) {
-		xfer.len+=32;
-		TcpalMemset(&_bufferIn[_size], 0xff, _size+32);
-	} else if (_size<32) {
-		xfer.len+=24;
-		TcpalMemset(&_bufferIn[_size], 0xff, _size+24);
-	} else if (_size<40) {
-		xfer.len+=16;
-		TcpalMemset(&_bufferIn[_size], 0xff, _size+16);
-	} else if (_size<48) {
-		xfer.len+=8;
-		TcpalMemset(&_bufferIn[_size], 0xff, _size+8);
-	}	
-#endif
-	
 	if(!spiData->spi_dev || !_size) return TCC353X_RETURN_FAIL;
 	if(!_bufferIn && !_bufferOut) return TCC353X_RETURN_FAIL;
 

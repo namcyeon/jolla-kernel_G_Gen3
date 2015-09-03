@@ -137,6 +137,8 @@ I32S Tcc353xApiGetFifoStatus(I32S _moduleIndex, I32U *_fifoSize);
 void Tcc353xApiParseIsdbSyncStat(IsdbLock_t * _isdbLock, I08U _input);
 I32S Tcc353xApiInterruptBuffClr(I32S _moduleIndex);
 I32S Tcc353xApiUserLoopStopCmd(I32S _moduleIndex);
+I32S Tcc353xApiSetGpioControl(I32S _moduleIndex, I32S _diversityIndex, 
+			   I32S _gpioNum, I32S _value);
 #ifdef __cplusplus
 };
 #endif

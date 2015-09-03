@@ -36,6 +36,11 @@
 
 #define BROADCAST_MMBI_CHK_DEV_NUM_DEVS 	1
 
+#ifdef _MODEL_L05E_
+#define MMB_CHK_DEV_EAR_ANTENNA
+extern void isdbt_hw_set_antenna_mode(int antenna_mode);
+#endif
+
 static struct class *broadcast_mmbi_chk_dev_class;
 static dev_t broadcast_mmbi_chk_dev;
 
@@ -52,6 +57,8 @@ static struct broadcast_mmbi_chk_dev_chdevice mmbi_chk_dev;
 static ioctl_monitor_info_t g_monitor_info = {0,};
 
 static mmbi_chk_dev_uim_info_t g_uim_info;
+
+static mmbi_chk_dev_antenna_info_t g_antenna_info = {0,};
 
 
 /************************************************************************
@@ -303,6 +310,28 @@ static int broadcast_mmbi_chk_dev_get_uim_info(unsigned long arg)
 	return 0;
 }
 
+//For Auto switching Antenna //0->default Retractable, 1->auto switching
+static int broadcast_mmbi_chk_dev_set_antenna_info(unsigned long arg)
+{
+	mmbi_chk_dev_antenna_info_t *antenna_info = (mmbi_chk_dev_antenna_info_t *) arg;
+	mmbi_chk_dev_antenna_info_t antenna_local_info;
+	size_t tmpsize = sizeof(mmbi_chk_dev_antenna_info_t);
+
+	if (copy_from_user(&antenna_local_info, (void *)antenna_info, tmpsize)) {
+		printk(KERN_DEBUG"copy_from_user failed. (len:%d)\n",tmpsize);
+		return -EFAULT;
+	}
+	
+	g_antenna_info.antenna_info = antenna_local_info.antenna_info;
+#ifdef MMB_CHK_DEV_EAR_ANTENNA
+	isdbt_hw_set_antenna_mode(g_antenna_info.antenna_info);
+#endif
+	printk(KERN_DEBUG"mmbi antenna info [%d]\n", g_antenna_info.antenna_info);
+	
+	return 0;
+}
+
+
 /************************************************************************
  * ioctl() system call.
  * [User Interface]
@@ -352,6 +381,10 @@ static long broadcast_mmbi_chk_dev_ioctl(struct file *filp, unsigned int cmd, un
 
 		case IOCTL_GET_UIM_INFO:
 			rtn = broadcast_mmbi_chk_dev_get_uim_info(arg);
+			break;
+
+		case IOCTL_SET_ANTENNA_INFO:
+			rtn = broadcast_mmbi_chk_dev_set_antenna_info(arg);
 			break;
 
 		default:

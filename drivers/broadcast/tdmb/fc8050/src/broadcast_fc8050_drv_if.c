@@ -19,6 +19,7 @@ static uint8*	gpMPI_Buffer = NULL;
 static uint8	gBBBuffer_ridx = 0;
 static uint8	gBBBuffer_widx = 0;
 static uint32	tdmb_real_read_size[TDMB_MPI_BUF_CHUNK_NUM];
+static unsigned int s_opmode = FC8050_SERVICE_MAX;
 
 #ifdef FC8050_USES_STATIC_BUFFER
 static uint8	gpMPI_Array[TDMB_MPI_BUF_SIZE*TDMB_MPI_BUF_CHUNK_NUM];
@@ -40,7 +41,9 @@ int broadcast_drv_if_power_on(void)
 //LGE_BROADCAST_I_0907
 	if(tunerbb_drv_fc8050_is_on() == TRUE)
 	{
+#ifdef CONFIG_FC8050_DEBUG
 		printk("tdmb_fc8050_power_on state true\n");
+#endif
 
 		retval = tunerbb_drv_fc8050_stop();
 		retval = tunerbb_drv_fc8050_power_off();
@@ -49,7 +52,7 @@ int broadcast_drv_if_power_on(void)
 		{
 			res = OK;
 		}
-	}	
+	}
 
 	retval = tunerbb_drv_fc8050_power_on();
 
@@ -59,7 +62,7 @@ int broadcast_drv_if_power_on(void)
 	}
 
 	//tunerbb_drv_fc8050_set_userstop(1);
-	
+
 	return res;
 }
 
@@ -67,7 +70,7 @@ int broadcast_drv_if_power_off(void)
 {
 	int8 res = ERROR;
 	boolean retval = FALSE;
-	
+
 	retval = tunerbb_drv_fc8050_power_off();
 
 	if(retval == TRUE)
@@ -79,14 +82,18 @@ int broadcast_drv_if_power_off(void)
 	return res;
 }
 
-int broadcast_drv_if_open(void) 
+int broadcast_drv_if_open(void)
 {
 	int8 res = ERROR;
 	boolean retval = FALSE;
 
+#ifdef CONFIG_FC8050_DEBUG
 	printk("broadcast_drv_if_open In\n");
+#endif
 	retval = tunerbb_drv_fc8050_init();
+#ifdef CONFIG_FC8050_DEBUG
 	printk("broadcast_drv_if_open  Out\n");
+#endif
 	if(retval == TRUE)
 	{
 		res = OK;
@@ -102,10 +109,12 @@ int broadcast_drv_if_close(void)
 
 	if(tunerbb_drv_fc8050_is_on() == TRUE)
 	{
+#ifdef CONFIG_FC8050_DEBUG
 		printk("tdmb_fc8050_power_on state close-->stop\n");
+#endif
 
 		retval = tunerbb_drv_fc8050_stop();
-	
+
 		if(retval == TRUE)
 		{
 			res = OK;
@@ -116,9 +125,10 @@ int broadcast_drv_if_close(void)
 }
 
 int broadcast_drv_if_set_channel(unsigned int freq_num, unsigned int subch_id, unsigned int op_mode)
-{	
+{
 	int8 rc = ERROR;
 	boolean retval = FALSE;
+	s_opmode = op_mode;
 
 	retval = tunerbb_drv_fc8050_set_channel(freq_num, subch_id, op_mode);
 	if(retval == TRUE)
@@ -154,13 +164,13 @@ int broadcast_drv_if_get_sig_info(struct broadcast_tdmb_sig_info *dmb_bb_info)
 {
 	int rc = ERROR;
 	boolean retval = FALSE;
-	
+
 	retval = tunerbb_drv_fc8050_get_ber(dmb_bb_info);	
-	
+
 	if(retval == TRUE)
 	{
 		rc = OK;
-	}		
+	}
 
 	return rc;
 }
@@ -172,17 +182,19 @@ int broadcast_drv_if_get_ch_info(char* buffer, unsigned int* buffer_size)
 
 	if(buffer == NULL || buffer_size == NULL)
 	{
+#ifdef CONFIG_FC8050_DEBUG
 		printk("broadcast_drv_if_get_ch_info argument error\n");
+#endif
 		return rc;
 	}
 
 	retval = tunerbb_drv_fc8050_get_fic(buffer, buffer_size);
-	
+
 	if(retval == TRUE)
 	{
 		rc = OK;
-	}	
-	
+	}
+
 	return rc;
 }
 
@@ -190,13 +202,17 @@ int broadcast_drv_if_get_dmb_data(char** buffer_ptr, unsigned int* buffer_size, 
 {
 	if(gpMPI_Buffer == NULL)
 	{
+#ifdef CONFIG_FC8050_DEBUG
 		printk("gpMPI_FIFO_Buffer == NULL\n");
+#endif
 		return ERROR;
 	}
 
 	if(buffer_ptr == NULL || buffer_size == NULL)
 	{
+#ifdef CONFIG_FC8050_DEBUG
 		printk(" input arg is null\n");
+#endif
 		return ERROR;
 	}
 
@@ -208,7 +224,9 @@ int broadcast_drv_if_get_dmb_data(char** buffer_ptr, unsigned int* buffer_size, 
 
 	if(user_buffer_size < tdmb_real_read_size[gBBBuffer_ridx])
 	{
+#ifdef CONFIG_FC8050_DEBUG
 		printk("user buffer is not enough %d", user_buffer_size);
+#endif
 		return ERROR;
 	}
 
@@ -226,7 +244,7 @@ int broadcast_drv_if_reset_ch(void)
 {
 	int8 res = ERROR;
 	boolean retval = FALSE;
-	
+
 	retval = tunerbb_drv_fc8050_reset_ch();
 
 	if(retval == TRUE)
@@ -240,7 +258,7 @@ int broadcast_drv_if_reset_ch(void)
 int broadcast_drv_if_user_stop(int mode)
 {
 	tunerbb_drv_fc8050_set_userstop(mode );
-	return OK;	
+	return OK;
 }
 
 int broadcast_drv_if_select_antenna(unsigned int sel)
@@ -256,7 +274,9 @@ int broadcast_drv_if_isr(void)
 
 	if(gpMPI_Buffer == NULL)
 	{
+#ifdef CONFIG_FC8050_DEBUG
 		printk("gpMPI_FIFO_Buffer== NULL");
+#endif
 		return ERROR;
 	}
 
@@ -286,9 +306,12 @@ int broadcast_drv_if_isr(void)
 
 	if(gBBBuffer_ridx == ((gBBBuffer_widx + 1)%TDMB_MPI_BUF_CHUNK_NUM))
 	{
-		printk("======================================\n");
-		printk("### buffer is full, skip the data (ridx=%d, widx=%d)  ###\n", gBBBuffer_ridx, gBBBuffer_widx);
-		printk("======================================\n");
+		if(s_opmode != FC8050_BLT_TEST)
+		{
+#ifdef CONFIG_FC8050_DEBUG
+			printk("### buffer is full, skip the data (ridx=%d, widx=%d)  ###\n", gBBBuffer_ridx, gBBBuffer_widx);
+#endif
+		}
 		return ERROR;
 	}
 
@@ -300,6 +323,6 @@ int broadcast_drv_if_isr(void)
 	}
 
 	//printk("broadcast_tdmb_read_data, ridx=%d, widx=%d, wsize=%d\n",gBBBuffer_ridx, gBBBuffer_widx,  read_buffer_size);
-	
+
 	return ERROR;
 }

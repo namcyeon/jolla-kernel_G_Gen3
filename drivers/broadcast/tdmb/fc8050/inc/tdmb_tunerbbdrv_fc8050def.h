@@ -86,6 +86,16 @@ typedef struct
 /*============================================================
 **    5.   Local Typedef
 *============================================================*/
+typedef enum	fc8050_service_type
+{
+	FC8050_DAB = 1,
+	FC8050_DMB = 2,
+	FC8050_VISUAL =3,
+	FC8050_DATA,
+	FC8050_ENSQUERY = 6,	/* LGE Added */
+	FC8050_BLT_TEST = 9,
+	FC8050_SERVICE_MAX
+} fc8050_service_type;
 
 /*============================================================
 **    6.   Global Variables

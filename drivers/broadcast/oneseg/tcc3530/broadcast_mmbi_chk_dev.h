@@ -10,15 +10,16 @@
 /********************************************************************************************************/
 
 enum ioctl_command_no {
-	IOCTL_DRV_OPEN 			= 0x1001,
-	IOCTL_DRV_CLOSE			= 0x1002,
-	IOCTL_SET_RF_BAND 		= 0x1003,
-	IOCTL_SET_CHANNEL 		= 0x1004,
-	IOCTL_SET_MONITOR 		= 0x1005,
-	IOCTL_GET_MONITOR 		= 0x1006,	
-	IOCTL_SET_MONITOR_APP	= 0x1007,
-	IOCTL_SET_UIM_INFO		= 0x1008,
-	IOCTL_GET_UIM_INFO		= 0x1009
+	IOCTL_DRV_OPEN 				= 0x1001,
+	IOCTL_DRV_CLOSE				= 0x1002,
+	IOCTL_SET_RF_BAND 			= 0x1003,
+	IOCTL_SET_CHANNEL 			= 0x1004,
+	IOCTL_SET_MONITOR 			= 0x1005,
+	IOCTL_GET_MONITOR 			= 0x1006,	
+	IOCTL_SET_MONITOR_APP		= 0x1007,
+	IOCTL_SET_UIM_INFO			= 0x1008,
+	IOCTL_GET_UIM_INFO			= 0x1009,
+	IOCTL_SET_ANTENNA_INFO		= 0x100A
 };
 
 /********************************************************************************************************/
@@ -54,6 +55,13 @@ typedef struct mmbi_chk_dev_uim_info
 {
 	unsigned char iccid[20];
 }mmbi_chk_dev_uim_info_t;
+
+//For Auto switching Antenna 
+typedef struct mmbi_chk_dev_antenna_info
+{
+	int antenna_info; //0->default Retractable, 1->auto switching
+}mmbi_chk_dev_antenna_info_t;
+
 
 #endif /* __RADIO_MB86A35_H__ */
 

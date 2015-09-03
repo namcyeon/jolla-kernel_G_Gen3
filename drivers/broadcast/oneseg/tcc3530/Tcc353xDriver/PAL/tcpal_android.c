@@ -187,9 +187,9 @@ I32S TcpalCreateSemaphore(TcpalSemaphore_t * _semaphore, I08S * _name,
 
 	lock = &MutexPool[index];
 	mutex_init(lock);
-
-	TcpalPrintErr((I08S *)"######## MutexC %s [%d] \n", _name, (int)(lock));
-
+	
+	TcpalPrintLog((I08S *)"######## MutexC %s [%d] \n", _name, (int)(lock));
+	
 	*_semaphore = (TcpalSemaphore_t)lock;
 	return TCC353X_RETURN_SUCCESS;
 }
@@ -205,14 +205,14 @@ I32S TcpalDeleteSemaphore(TcpalSemaphore_t * _semaphore)
 
 	address = (I32U)(lock);
 	index = TcpalFreeSemaphoreAddress(address);
-	if(index < 0)
-	{
+	if(index < 0) 
+	{ 
 		TcpalPrintErr((I08S *)"####### Mutex Delete Fail :%d \n", (int)index);
 		return TCC353X_RETURN_FAIL;
 	}
 	
-	TcpalPrintErr((I08S *)"######## MutexR [%d] \n", (int)(lock));
-
+	TcpalPrintLog((I08S *)"######## MutexR [%d] \n", (int)(lock));
+	
 	mutex_destroy(lock);
 	*_semaphore = 0;
 	return TCC353X_RETURN_SUCCESS;

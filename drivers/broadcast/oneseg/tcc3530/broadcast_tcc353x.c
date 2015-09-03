@@ -11,6 +11,9 @@
 #include <linux/workqueue.h>
 #include <linux/wakelock.h> 
 
+#include <linux/err.h>
+#include <mach/msm_xo.h>
+
 #include "tcpal_os.h"
 #include "tcc353x_hal.h"
 
@@ -20,6 +23,10 @@
 
 TcpalSemaphore_t Tcc353xDrvSem;
 TcpalSemaphore_t Tcc353xStreamSema;
+TcpalSemaphore_t Tcc353xLnaControlSema;
+
+static const char *id = "TCC";
+static struct msm_xo_voter *xo_handle_tcc;
 
 /*#define _NOT_USE_WAKE_LOCK_*/
 
@@ -42,12 +49,22 @@ struct spi_device *TCC_GET_SPI_DRIVER(void)
 
 int tcc353x_power_on(void)
 {
+	int rc;
+	
 	if(IsdbCtrlInfo.pwr_state != 1)
 	{
 #ifndef _NOT_USE_WAKE_LOCK_
 		wake_lock(&IsdbCtrlInfo.wake_lock);
 #endif
 		TchalPowerOnDevice();
+
+		rc = msm_xo_mode_vote(xo_handle_tcc, MSM_XO_MODE_ON);
+		if(rc < 0) {
+			pr_err("Configuring MSM_XO_MODE_ON failed (%d)\n", rc);
+			msm_xo_put(xo_handle_tcc);
+			return FALSE;
+		}
+
 	}
 	else
 	{
@@ -71,6 +88,10 @@ int tcc353x_power_off(void)
 	}
 	else
 	{
+		if(xo_handle_tcc != NULL) {
+		    msm_xo_mode_vote(xo_handle_tcc, MSM_XO_MODE_OFF);
+		}
+		
 		TcpalPrintStatus((I08S *)"Isdb_tcc3530_power_off\n");
 		TchalPowerDownDevice();
 	}
@@ -87,10 +108,18 @@ static int broadcast_Isdb_spi_probe(struct spi_device *spi_dev)
 {
 	int rc = 0;
 
+	xo_handle_tcc = msm_xo_get(MSM_XO_TCXO_A0, id);
+	if(IS_ERR(xo_handle_tcc)) {
+		pr_err("Failed to get MSM_XO_TCXO_A2 handle for TDMB (%ld)\n", PTR_ERR(xo_handle_tcc));
+		return FALSE;
+	}
+
 	TcpalCreateSemaphore(&Tcc353xDrvSem,
 			     (I08S *) "Tcc353xDriverControlSemaphore", 1);
 	TcpalCreateSemaphore(&Tcc353xStreamSema,
 			     (I08S *) "StreamSemaphore", 1);
+	TcpalCreateSemaphore(&Tcc353xLnaControlSema,
+			     (I08S *) "LnaControlSemaphore", 1);
 
 	spi_dev->mode = SPI_MODE_0;
 	spi_dev->bits_per_word = 8;
@@ -125,6 +154,7 @@ static int broadcast_Isdb_spi_remove(struct spi_device *spi)
 	memset((unsigned char*)&IsdbCtrlInfo, 0x0, sizeof(struct broadcast_tcc3530_ctrl_data));
 	TcpalDeleteSemaphore(&Tcc353xDrvSem);
 	TcpalDeleteSemaphore(&Tcc353xStreamSema);
+	TcpalDeleteSemaphore(&Tcc353xLnaControlSema);
 	return rc;
 }
 

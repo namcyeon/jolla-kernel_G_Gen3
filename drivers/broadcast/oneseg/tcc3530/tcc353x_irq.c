@@ -11,10 +11,17 @@
 #include <linux/time.h>
 #include <linux/ktime.h>
 
+#define CPU_AFFINITY
+
 /*#define INT_TIME_CHECK*/
 /*#define USE_TCC_WORK_QUEUE*/
 I32U Tcc353xInterruptProcess(void);
 void Tcc353xInterruptGetStream(I32U _fifoSize);
+
+
+#ifdef CPU_AFFINITY
+static int cpu_state = 0;
+#endif
 
 struct spi_device *TCC_GET_SPI_DRIVER(void);
 
@@ -47,6 +54,12 @@ static void TcbdInterruptWork(struct work_struct *_param)
 #endif
 	TcpalSemaphoreLock(&Tcc353xDrvSem);
 
+	if (TcbdIrqData.isIrqEnable == 0) {
+		  TcpalPrintErr((I08S *)"[MMB_DEBUG] TcbdInterruptWork_irqDisabled\n");
+		  TcpalSemaphoreUnLock(&Tcc353xDrvSem);
+		  return;
+	}
+	
 	fifoSize = Tcc353xInterruptProcess();
 	/*enable_irq(irqData->tcbd_irq);*/
 
@@ -77,26 +90,46 @@ static irqreturn_t TcbdIrqHandler(int _irq, void *_param)
 static irqreturn_t TcbdIrqThreadfn(int _irq, void* _param)
 {
 	I32U fifoSize;
+	int old_irq_enable = 0;
 #ifdef INT_TIME_CHECK
 	ktime_t st, et, delta_t;
 	long delta;
 #endif
+	old_irq_enable = TcbdIrqData.isIrqEnable;
+
 #ifdef INT_TIME_CHECK
 	st = ktime_get();
 #endif
 
-	TcpalSemaphoreLock(&Tcc353xDrvSem);
-	if (TcbdIrqData.isIrqEnable == 0)
+#ifdef CPU_AFFINITY
 	{
-		TcpalPrintStatus((I08S *)"TcbdIrqThreadfn isIrqEnable value is zero return\n");
-		TcpalSemaphoreUnLock(&Tcc353xDrvSem);
-		return IRQ_HANDLED;
+		if(cpu_state == 0)
+		{
+			struct cpumask cpus;
+			printk("%s: Enter  Set CPU Affinity only to cpu0\n", __func__);
+			cpumask_clear(&cpus);
+			cpumask_set_cpu(0, &cpus);		 
+			if (sched_setaffinity(current->pid, &cpus))
+				printk("%s: tcc() set CPU affinity failed\n",__func__);
+			else
+				printk("%s: tcc() set CPU affinity Succeed  PID = %d\n",__func__, current->pid);
+			cpu_state = 1;
+
+		}
 	}
+#endif	
+
+	TcpalSemaphoreLock(&Tcc353xDrvSem);
+	if (TcbdIrqData.isIrqEnable == 0) {
+		  TcpalPrintErr((I08S *)"[MMB_DEBUG] TcbdIrqThreadfn_irqDisabled. old_irq_enable[%d]\n",
+		  		old_irq_enable);
+		  TcpalSemaphoreUnLock(&Tcc353xDrvSem);
+		  return IRQ_HANDLED;
+	}
+
 	fifoSize = Tcc353xInterruptProcess();
 	if(fifoSize)
-	{
 		Tcc353xInterruptGetStream(fifoSize);
-	}
 
 	TcpalSemaphoreUnLock(&Tcc353xDrvSem);
 	

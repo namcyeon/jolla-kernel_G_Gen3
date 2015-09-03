@@ -41,7 +41,7 @@ int fc8050_ppi_byteread(HANDLE hDevice, fci_u16 addr, fci_u8 *data)
 	FC8050_PPI_REG = length & 0xff;
 
 	*data = FC8050_PPI_REG;
-	
+
 	return BBM_OK;
 }
 
@@ -52,7 +52,7 @@ int fc8050_ppi_wordread(HANDLE hDevice, fci_u16 addr, fci_u16 *data)
 
 	if(BBM_SCI_DATA <= addr && BBM_SCI_SYNCRX >= addr)
 		command = PPI_READ | PPI_WMODE;
-	
+
 	FC8050_PPI_REG = addr & 0xff;
 	FC8050_PPI_REG = (addr & 0xff00) >> 8;
 	FC8050_PPI_REG = command | ((length & 0x0f00) >> 8);
@@ -107,7 +107,7 @@ int fc8050_ppi_bytewrite(HANDLE hDevice, fci_u16 addr, fci_u8 data)
 	FC8050_PPI_REG = length & 0xff;
 
 	FC8050_PPI_REG = data;
-	
+
 	return BBM_OK;
 }
 
@@ -126,7 +126,7 @@ int fc8050_ppi_wordwrite(HANDLE hDevice, fci_u16 addr, fci_u16 data)
 
 	FC8050_PPI_REG = data & 0xff;
 	FC8050_PPI_REG = (data & 0xff00) >> 8;
-	
+
 	return BBM_OK;
 }
 
@@ -143,7 +143,7 @@ int fc8050_ppi_longwrite(HANDLE hDevice, fci_u16 addr, fci_u32 data)
 	FC8050_PPI_REG = (data & 0x0000ff00) >> 8;
 	FC8050_PPI_REG = (data & 0x00ff0000) >> 16;
 	FC8050_PPI_REG = (data & 0xff000000) >> 24;
-	
+
 	return BBM_OK;
 }
 
@@ -171,7 +171,7 @@ int fc8050_ppi_dataread(HANDLE hDevice, fci_u16 addr, fci_u8* data, fci_u16 leng
 	x = length / 4095;
 	y = length % 4095;
 
-	
+
 	for(i=0; i<x; i++) {
 		FC8050_PPI_REG = addr & 0xff;
 		FC8050_PPI_REG = (addr & 0xff00) >> 8;
@@ -193,7 +193,7 @@ int fc8050_ppi_dataread(HANDLE hDevice, fci_u16 addr, fci_u8* data, fci_u16 leng
 			data[4095*x+j] = FC8050_PPI_REG;
 		}
 	}
-	
+
 	return BBM_OK;
 }
 

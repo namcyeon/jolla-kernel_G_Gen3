@@ -28,7 +28,7 @@ unsigned int RingBufId = 0;
 extern TcpalSemaphore_t Tcc353xStreamSema;
 
 /* for overflow test */
-//#define _DBG_CHK_OVERFLOW_CNT_
+#define _DBG_CHK_OVERFLOW_CNT_
 I32U gOverflowcnt = 0;
 I32U gDbgIsrCnt = 0;
 
@@ -184,6 +184,7 @@ I32U Tcc353xInterruptProcess(void)
 	I08U irqStatus = 0;
 	I32S moduleIndex = 0;
 	I32U totalSize = 0;
+	I08U data = 0x00;
 
 	/* Read BB Interrupt Status */
 	Tcc353xApiGetIrqStatus(moduleIndex, &irqStatus);
@@ -193,6 +194,11 @@ I32U Tcc353xInterruptProcess(void)
 		TcpalPrintErr((I08S *)
 			      "[TCC353X] FIFO overflow[0x%02X] flush!!!\n",
 			      irqStatus);
+
+		/* IRQ Disable - Prevent additional interrupt signal */
+		data = 0x00;
+		Tcc353xApiRegisterWrite(0,0, 0x03, &data, 1);
+
 		/* Tcc353x IRQ Clear */
 		Tcc353xApiIrqClear(moduleIndex, irqStatus);
 		Tcc353xApiInterruptBuffClr(moduleIndex);
@@ -203,11 +209,15 @@ I32U Tcc353xInterruptProcess(void)
 		Tcc353xApiIrqClear(moduleIndex, irqStatus);
 		Tcc353xApiGetFifoStatus(moduleIndex, &totalSize);
 		ret = totalSize;
+		if(ret>=150*188)
+			TcpalPrintErr((I08S *)
+			      "[TCC353X] FIFO stat size[%d]\n",
+			      ret);
 	}
 
 	gDbgIsrCnt++;
 
-	if(gDbgIsrCnt>40) {
+	if(gDbgIsrCnt>100) {
 		gDbgIsrCnt = 0;
 #ifdef _DBG_CHK_OVERFLOW_CNT_
 		TcpalPrintStatus((I08S *)
@@ -280,9 +290,13 @@ void Tcc353xInterruptGetStream(I32U _fifoSize)
 #else
 void Tcc353xInterruptGetStream(I32U _fifoSize)
 {
+#define _MAX_TS_READ_SIZE_	(15792) /* 188*84 */
 	I32U totalSize = 0;
 	I32U freeSize = 0;
 	I32U writeSize = 0;
+	I32U remainSize = 0;
+	I32U i;
+	I32U readSizes[2] = {0,0};
 
 	totalSize = _fifoSize - (_fifoSize%188);
 
@@ -291,30 +305,42 @@ void Tcc353xInterruptGetStream(I32U _fifoSize)
 
 	totalSize = (totalSize/188/4)*188*4;
 
-	if(totalSize > 188 * 87)
-		totalSize = 188 * 84;
+	//if(totalSize > 188 * 87)
+	if(totalSize > _MAX_TS_READ_SIZE_) {
+		remainSize = totalSize - _MAX_TS_READ_SIZE_;
+		remainSize = (remainSize/188/4)*188*4;
+		if(remainSize> _MAX_TS_READ_SIZE_)
+			remainSize = _MAX_TS_READ_SIZE_;
+		totalSize = _MAX_TS_READ_SIZE_;
+	} else {
+		remainSize = 0;
+	}
+	readSizes[0] = totalSize;
+	readSizes[1] = remainSize;
+
 	//[Fix End]align TS size to use DMA only mode - 20121228 hyewon.eum@lge.com
 
-	if(totalSize>=188) {
-		Tcc353xApiStreamRead(0,
-				     &Tcc353xStreamData[0],
-				     totalSize);
+	for(i=0; i<2; i++) {
+		if(readSizes[i]>=188) {
+			Tcc353xApiStreamRead(0,
+					     &Tcc353xStreamData[0],
+					     readSizes[i]);
 
-		if(Tcc353xStreamData[0]!=0x47) {
-			TcpalPrintErr((I08S *) "[TCC353X] SyncByte Error! [0x%02x]\n",
-				     Tcc353xStreamData[0]);
-			TcpalPrintErr((I08S *) "[TCC353X] Buff Flush for SyncByte matching\n");
-		} else {
-			freeSize = mbt_dataring_free(RingBufId);
+			if(Tcc353xStreamData[0]!=0x47) {
+				TcpalPrintErr((I08S *) "[TCC353X] SyncByte Error! [0x%02x]\n",
+					     Tcc353xStreamData[0]);
+				TcpalPrintErr((I08S *) "[TCC353X] Buff Flush for SyncByte matching\n");
+			} else {
+				freeSize = mbt_dataring_free(RingBufId);
 
-			if(freeSize >= totalSize) {
-				writeSize = mbt_dataring_write(RingBufId, &Tcc353xStreamData[0], totalSize);
-				if(writeSize < 0) {
-					TcpalPrintErr((I08S *) "[TCC353X] Ring Buffer Error!\n");
+				if(freeSize >= readSizes[i]) {
+					writeSize = mbt_dataring_write(RingBufId, &Tcc353xStreamData[0], readSizes[i]);
+					if(writeSize < 0) {
+						TcpalPrintErr((I08S *) "[TCC353X] Ring Buffer Error!\n");
+					}
 				}
 			}
 		}
 	}
 }
-
 #endif

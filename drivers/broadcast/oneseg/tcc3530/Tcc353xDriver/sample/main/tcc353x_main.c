@@ -14,6 +14,8 @@
 #include "tcc353x_monitoring.h"
 #include "tcc353x_user_defines.h"
 
+#define __USER_GPIO9_STRENGTH_MAX__
+
 /*  [0] Tccspi [1] sts [2] spims */
 Tcc353xRegisterConfig_t Tcc353xSingle[3] = {
 	{
@@ -30,7 +32,11 @@ Tcc353xRegisterConfig_t Tcc353xSingle[3] = {
 	 /* gpioLr_0x12_07_00, gpioLr_0x12_15_08, gpioLr_0x12_23_16 */
 	 0x00, 0x00, 0x00,
 	 /* gpioDrv_0x13_07_00, gpioDrv_0x13_15_08, gpioDrv_0x13_23_16 */
+#if defined (__USER_GPIO9_STRENGTH_MAX__)
+	 TCC353X_DRV_STR_GPIO_0x13_07_00, 0x02, 0x00,
+#else
 	 TCC353X_DRV_STR_GPIO_0x13_07_00, 0x00, 0x00,
+#endif
 	 /* gpioPe_0x14_07_00, gpioPe_0x14_15_08, gpioPe_0x14_23_16 */
 	 0x00, 0x00, 0x00,
 	 /* gpioSDrv_0x15_07_00, gpioSDrv_0x15_15_08, gpioSDrv_0x15_23_16 */
@@ -90,7 +96,11 @@ Tcc353xRegisterConfig_t Tcc353xSingle[3] = {
 	 /* gpioLr_0x12_07_00, gpioLr_0x12_15_08, gpioLr_0x12_23_16 */
 	 0x00, 0x00, 0x00,
 	 /* gpioDrv_0x13_07_00, gpioDrv_0x13_15_08, gpioDrv_0x13_23_16 */
+#if defined (__USER_GPIO9_STRENGTH_MAX__)
+	 TCC353X_DRV_STR_GPIO_0x13_07_00, 0x02, 0x00,
+#else
 	 TCC353X_DRV_STR_GPIO_0x13_07_00, 0x00, 0x00,
+#endif
 	 /* gpioPe_0x14_07_00, gpioPe_0x14_15_08, gpioPe_0x14_23_16 */
 	 0x00, 0x00, 0x00,
 	 /* gpioSDrv_0x15_07_00, gpioSDrv_0x15_15_08, gpioSDrv_0x15_23_16 */
@@ -149,7 +159,11 @@ Tcc353xRegisterConfig_t Tcc353xSingle[3] = {
 	 /* gpioLr_0x12_07_00, gpioLr_0x12_15_08, gpioLr_0x12_23_16 */
 	 0x00, 0x00, 0x00,
 	 /* gpioDrv_0x13_07_00, gpioDrv_0x13_15_08, gpioDrv_0x13_23_16 */
+#if defined (__USER_GPIO9_STRENGTH_MAX__)
+	 TCC353X_DRV_STR_GPIO_0x13_07_00, 0x02, 0x00,
+#else
 	 TCC353X_DRV_STR_GPIO_0x13_07_00, 0x00, 0x00,
+#endif
 	 /* gpioPe_0x14_07_00, gpioPe_0x14_15_08, gpioPe_0x14_23_16 */
 	 0x00, 0x00, 0x00,
 	 /* gpioSDrv_0x15_07_00, gpioSDrv_0x15_15_08, gpioSDrv_0x15_23_16 */
@@ -196,6 +210,51 @@ Tcc353xRegisterConfig_t Tcc353xSingle[3] = {
 	,
 };
 
+#ifdef _MODEL_L05E_ /* OSC 19200 Hz */
+Tcc353xOption_t Tcc353xOptionSingle = {
+	/* Baseband name            */
+	BB_TCC3530,
+
+	/* board type               */
+	TCC353X_BOARD_SINGLE,
+
+	/* select command interface */
+	TCC353X_IF_TCCSPI,
+
+	/* select stream interface  */
+	TCC353X_STREAM_IO_MAINIO,
+
+	/* current device address   */
+	/* 0xA8    (first)          */
+	/* 0xAA    (second)         */
+	/* 0xAC    (third)          */
+	/* 0xAE    (fourth)         */
+	0xA8,
+
+	/* pll option               */
+	0x00, /* use default pll */ /* 0xA214 */
+
+	/* osc clk                  */
+	19200,
+
+	/* diversity position option */
+	TCC353X_DIVERSITY_NONE,
+
+	/* Interrupt usage option (tccspi-only) */
+	1,
+
+	/* RF Switching GPIO_N                  */
+	/* -1 : not use, N : use GPIO_N         */
+	/* GPIO_N Value 0 : VHF, 1 : UHF        */
+	(-1),
+
+	/* register config          */
+	&Tcc353xSingle[0]
+};
+
+#else
+
+/* GJ Model : OSC 38400Hz */
 Tcc353xOption_t Tcc353xOptionSingle = {
 	/* Baseband name            */
 	BB_TCC3530,
@@ -236,4 +295,5 @@ Tcc353xOption_t Tcc353xOptionSingle = {
 	/* register config          */
 	&Tcc353xSingle[0]
 };
+#endif
 

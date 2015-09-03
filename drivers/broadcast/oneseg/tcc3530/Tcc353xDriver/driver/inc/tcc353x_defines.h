@@ -14,13 +14,15 @@
 
 #include "tcc353x_common.h"
 
-/*
-#define USE_SEMI_RF
-*/
-
 /* CODE Memory Setting */
 #define PHY_BASE_ADDR                       (0x80000000)
 #define TCC353X_CODEMEMBASE                 (PHY_BASE_ADDR + 0xC000)
+
+#if defined (_MODEL_L05E_)
+#define _SUPPORT_OSC_19200_
+#else
+#define _SUPPORT_OSC_38400_ /* default */
+#endif
 
 typedef struct Tcc353xHandle_t {
 	I08U handleOpen;

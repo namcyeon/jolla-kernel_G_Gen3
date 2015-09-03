@@ -53,7 +53,7 @@ static fci_u8 rdata_buf[8196] __cacheline_aligned;// = {0};
 #else
 static fci_u8 tx_data[10];
 static fci_u8 tdata_buf[40] = {0};
-static fci_u8 rdata_buf[8196]  = {0};
+static fci_u8 rdata_buf[8196] = {0};
 #endif
 
 static DEFINE_MUTEX(lock);
@@ -63,7 +63,7 @@ extern struct spi_device *tdmb_fc8050_get_spi_device(void);
 int fc8050_spi_write_then_read(struct spi_device *spi, fci_u8 *txbuf, fci_u16 tx_length, fci_u8 *rxbuf, fci_u16 rx_length)
 {
 	fci_s32 res;
-	
+
 	struct spi_message	message;
 	struct spi_transfer	x;
 
@@ -71,13 +71,13 @@ int fc8050_spi_write_then_read(struct spi_device *spi, fci_u8 *txbuf, fci_u16 tx
 	memset(&x, 0, sizeof x);
 
 	spi_message_add_tail(&x, &message);
-	
+
 	memcpy(tdata_buf, txbuf, tx_length);
-	
+
 	x.tx_buf=tdata_buf;
 	x.rx_buf=rdata_buf;
 	x.len = tx_length + rx_length;
-	
+
 	res = spi_sync(spi, &message);
 
 	memcpy(rxbuf, x.rx_buf + tx_length, rx_length);
@@ -88,19 +88,19 @@ int fc8050_spi_write_then_read(struct spi_device *spi, fci_u8 *txbuf, fci_u16 tx
 int fc8050_spi_write_then_read_burst(struct spi_device *spi, fci_u8 *txbuf, fci_u16 tx_length, fci_u8 *rxbuf, fci_u16 rx_length)
 {
 	fci_s32 res;
-	
+
 	struct spi_message	message;
 	struct spi_transfer	x;
 
 	spi_message_init(&message);
 	memset(&x, 0, sizeof x);
-	
+
 	spi_message_add_tail(&x, &message);
-	
+
 	x.tx_buf=txbuf;
 	x.rx_buf=rxbuf;
 	x.len = tx_length + rx_length;
-	
+
 	res = spi_sync(spi, &message);
 
 	return res;
@@ -128,7 +128,7 @@ static int spi_bulkwrite(HANDLE hDevice, fci_u8 addr, fci_u8* data, fci_u16 leng
 {
 	fci_s32 ret;
 	fci_s32 i;
-	
+
 	tx_data[0] = SPI_CMD_BURST_WRITE;
 	tx_data[1] = addr;
 
@@ -144,7 +144,7 @@ static int spi_bulkwrite(HANDLE hDevice, fci_u8 addr, fci_u8* data, fci_u16 leng
 		PRINTF(0, "fc8050_spi_bulkwrite fail : %d\n", ret);
 		return BBM_NOK;
 	}
-	
+
 	return BBM_OK;
 }
 
@@ -173,17 +173,17 @@ static int spi_dataread(HANDLE hDevice, fci_u8 addr, fci_u8* data, fci_u16 lengt
 static int __devinit fc8050_spi_probe(struct spi_device *spi)
 {
 	fci_s32 ret;
-	
+
 	PRINTF(0, "fc8050_spi_probe\n");
 
 	spi->max_speed_hz =  4000000;
-	
+
 	ret = spi_setup(spi);
 	if (ret < 0)
 		return ret;
 
 	fc8050_spi = kzalloc(sizeof(struct spi_device), GFP_KERNEL);
-	
+
 	if (!fc8050_spi)
 		return -ENOMEM;
 
@@ -215,7 +215,7 @@ int fc8050_spi_init(HANDLE hDevice, fci_u16 param1, fci_u16 param2)
 	int res;
 
 	res = spi_register_driver(&fc8050_spi_driver);
-	
+
 	if(res)
 	{
 		PRINTF(0, "fc8050_spi register fail : %d\n", res);
@@ -239,7 +239,7 @@ int fc8050_spi_byteread(HANDLE hDevice, fci_u16 addr, fci_u8 *data)
 	fci_u8 command = HPIC_READ | HPIC_BMODE | HPIC_ENDIAN;
 
 	mutex_lock(&lock);
-	
+
 	res  = spi_bulkwrite(hDevice, BBM_COMMAND_REG, &command, 1);
 	res |= spi_bulkwrite(hDevice, BBM_ADDRESS_REG, (fci_u8*)&addr, 2);
 	res |= spi_bulkread(hDevice, BBM_DATA_REG, data, 1);
@@ -264,7 +264,7 @@ int fc8050_spi_wordread(HANDLE hDevice, fci_u16 addr, fci_u16 *data)
 	res |= spi_bulkread(hDevice, BBM_DATA_REG, (fci_u8*)data, 2);
 
 	mutex_unlock(&lock);
-	
+
 	return res;
 }
 
@@ -274,7 +274,7 @@ int fc8050_spi_longread(HANDLE hDevice, fci_u16 addr, fci_u32 *data)
 	fci_u8 command = HPIC_READ | HPIC_AINC | HPIC_BMODE | HPIC_ENDIAN;
 
 	mutex_lock(&lock);
-	
+
 	res  = spi_bulkwrite(hDevice, BBM_COMMAND_REG, &command, 1);
 	res |= spi_bulkwrite(hDevice, BBM_ADDRESS_REG, (fci_u8*)&addr, 2);
 	res |= spi_bulkread(hDevice, BBM_DATA_REG, (fci_u8*)data, 4);
@@ -296,7 +296,7 @@ int fc8050_spi_bulkread(HANDLE hDevice, fci_u16 addr, fci_u8 *data, fci_u16 leng
 	res |= spi_bulkread(hDevice, BBM_DATA_REG, data, length);
 
 	mutex_unlock(&lock);
-	
+
 	return res;
 }
 
@@ -312,7 +312,7 @@ int fc8050_spi_bytewrite(HANDLE hDevice, fci_u16 addr, fci_u8 data)
 	res |= spi_bulkwrite(hDevice, BBM_DATA_REG, (fci_u8*)&data, 1);
 
 	mutex_unlock(&lock);
-	
+
 	return res;
 }
 
@@ -331,7 +331,7 @@ int fc8050_spi_wordwrite(HANDLE hDevice, fci_u16 addr, fci_u16 data)
 	res |= spi_bulkwrite(hDevice, BBM_DATA_REG, (fci_u8*)&data, 2);
 
 	mutex_unlock(&lock);
-	
+
 	return res;
 }
 
@@ -347,7 +347,7 @@ int fc8050_spi_longwrite(HANDLE hDevice, fci_u16 addr, fci_u32 data)
 	res |= spi_bulkwrite(hDevice, BBM_DATA_REG, (fci_u8*)&data, 4);
 
 	mutex_unlock(&lock);
-	
+
 	return res;
 }
 
@@ -363,7 +363,7 @@ int fc8050_spi_bulkwrite(HANDLE hDevice, fci_u16 addr, fci_u8* data, fci_u16 len
 	res |= spi_bulkwrite(hDevice, BBM_DATA_REG, data, length);
 
 	mutex_unlock(&lock);
-	
+
 	return res;
 }
 
@@ -379,7 +379,7 @@ int fc8050_spi_dataread(HANDLE hDevice, fci_u16 addr, fci_u8* data, fci_u16 leng
 	res |= spi_dataread(hDevice, BBM_DATA_REG, data, length);
 
 	mutex_unlock(&lock);
-	
+
 	return res;
 }
 

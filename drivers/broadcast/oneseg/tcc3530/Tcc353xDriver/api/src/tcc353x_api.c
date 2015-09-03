@@ -88,6 +88,8 @@ static I32S Tcc353xApiWaitLock(I32S _moduleIndex,
 			       I32S _fastScan);
 extern I32S Tcc353xGetFifoStatus(I32S _moduleIndex, I32U *_fifoSize);
 extern I32S Tcc353xInterruptBuffClr(I32S _moduleIndex);
+extern I32S Tcc353xSetGpioControl(I32S _moduleIndex, I32S _diversityIndex,
+				  I32S _gpioNum, I32S _value);
 
 
 /* global values */
@@ -893,6 +895,19 @@ I32S Tcc353xApiChannelSelect(I32S _moduleIndex, I32S _frequency,
 					break;
 				}
 			}
+		} else if (inputOption.segmentType == TCC353X_ISDBTMM) {
+			Tcc353xApiControl[_moduleIndex][0].tmmMode = 1;
+
+			if (inputOption.tmmSet == A_1st_13Seg ||
+			    inputOption.tmmSet == B_2nd_13Seg ||
+			    inputOption.tmmSet == C_2nd_13Seg ||
+			    inputOption.tmmSet == C_1st_13Seg ||
+			    inputOption.tmmSet == UserDefine_Tmm13Seg)
+				Tcc353xApiControl[_moduleIndex][0].tmmSegments = 13;
+			else 
+				Tcc353xApiControl[_moduleIndex][0].tmmSegments = 1;
+		} else {
+			/* none */
 		}
 
 		subret =
@@ -1670,6 +1685,9 @@ I32S Tcc353xApiGetTMCCInfo(I32S _moduleIndex, I32S _diversityIndex,
 I32S Tcc353xApiCasOpen(I32S _moduleIndex, I32U _casRound,
 		       I08U * _systemKey)
 {
+	if (Tcc353xApiCheckConditions(_moduleIndex) != TCC353X_RETURN_SUCCESS)
+		return TCC353X_RETURN_FAIL;
+
 	return (Tcc353xCasOpen(_moduleIndex, _casRound, _systemKey));
 }
 
@@ -1692,6 +1710,9 @@ I32S Tcc353xApiCasOpen(I32S _moduleIndex, I32U _casRound,
 I32S Tcc353xApiCasSetPid(I32S _moduleIndex, I32U * _pids,
 			 I32U _numberOfPids)
 {
+	if (Tcc353xApiCheckConditions(_moduleIndex) != TCC353X_RETURN_SUCCESS)
+		return TCC353X_RETURN_FAIL;
+
 	return (Tcc353xCasSetPid(_moduleIndex, _pids, _numberOfPids));
 }
 
@@ -1718,6 +1739,9 @@ I32S Tcc353xApiCasSetKeyMulti2(I32S _moduleIndex, I32S _parity,
 			       I08U * _key, I32S _keyLength,
 			       I08U * _initVector, I32S _initVectorLength)
 {
+	if (Tcc353xApiCheckConditions(_moduleIndex) != TCC353X_RETURN_SUCCESS)
+		return TCC353X_RETURN_FAIL;
+
 	return (Tcc353xCasSetKeyMulti2
 		(_moduleIndex, _parity, _key, _keyLength, _initVector,
 		 _initVectorLength));
@@ -1859,6 +1883,12 @@ I32S Tcc353xApiOpStatusRead(I32S _moduleIndex, I32S _diversityIndex,
  ---------------------------------------------------------------------*/
 I32S Tcc353xApiGetFifoStatus(I32S _moduleIndex, I32U *_fifoSize)
 {
+	if (Tcc353xApiCheckConditions(_moduleIndex) 
+	    != TCC353X_RETURN_SUCCESS) {
+		_fifoSize[0] = 0;
+		return TCC353X_RETURN_FAIL;
+	}
+
 	Tcc353xGetFifoStatus(_moduleIndex, _fifoSize);
 	return TCC353X_RETURN_SUCCESS;
 }
@@ -1879,6 +1909,9 @@ I32S Tcc353xApiGetFifoStatus(I32S _moduleIndex, I32U *_fifoSize)
  ---------------------------------------------------------------------*/
 I32S Tcc353xApiInterruptBuffClr(I32S _moduleIndex)
 {
+	if (Tcc353xApiCheckConditions(_moduleIndex) != TCC353X_RETURN_SUCCESS)
+		return TCC353X_RETURN_FAIL;
+
 	Tcc353xInterruptBuffClr(_moduleIndex);
 	return TCC353X_RETURN_SUCCESS;
 }
@@ -1904,5 +1937,34 @@ I32S Tcc353xApiUserLoopStopCmd(I32S _moduleIndex)
 	else 
 		userStopCmd[_moduleIndex] = 0;
 	return TCC353X_RETURN_SUCCESS;
+}
+
+/*---------------------------------------------------------------------
+ * Function name
+ * 	Tcc353xApiSetGpioControl
+ * Description
+ * 	stopping for loop
+ * Parameters
+ * 	_moduleIndex : Index of module
+ *		0 : BaseBand#0 (Single : default, Dual : BaseBand#0)
+ * 		1 : BaseBand#1 (Single : Not use, Dual : BaseBand#1)
+ * Return value
+ * 	
+ * Remark
+ * 	
+ ---------------------------------------------------------------------*/
+I32S Tcc353xApiSetGpioControl(I32S _moduleIndex, I32S _diversityIndex, 
+			   I32S _gpioNum, I32S _value)
+{
+	I32S ret = TCC353X_RETURN_SUCCESS;
+
+	if (Tcc353xApiCheckConditions(_moduleIndex) !=
+	    TCC353X_RETURN_SUCCESS) {
+		ret = TCC353X_RETURN_FAIL;
+	} else {
+		ret = Tcc353xSetGpioControl(_moduleIndex, _diversityIndex,
+					   _gpioNum, _value);
+	}
+	return ret;
 }
 

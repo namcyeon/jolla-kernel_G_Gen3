@@ -31,8 +31,13 @@ static I32S Tcc353xTccspiReset(I32S _moduleIndex, I32S _chipAddress);
 */
 //#define DMA_MAX_SIZE	(188*40)		// 07.34kb  7520 byte
 //#define DMA_MAX_SIZE	(188*64)		//  11.75kb 12032
-//#define DMA_MAX_SIZE	(188*80)	//  14.68kb 15040
+//#define DMA_MAX_SIZE	(188*80)		//  14.68kb 15040
 #define DMA_MAX_SIZE	(188*87)		//  15.97kb 16356
+
+#define _RW_AT_ONCE_
+#if defined (_RW_AT_ONCE_)
+#define _MAX_BURST_SIZE_	(188*84)	//  for stability (Write at once mode)
+#endif
 
 #define SPICMD_BUFF_LEN     8
 #define SPICMD_ACK          0x47
@@ -75,9 +80,15 @@ const I08U SdioCrc7Table[256] = {
 	0x46, 0x4f, 0x54, 0x5d, 0x62, 0x6b, 0x70, 0x79
 };
 
+#ifdef _RW_AT_ONCE_
+static I08U NullDatas[DMA_MAX_SIZE+(SPICMD_BUFF_LEN*2)+32] __cacheline_aligned;
+static I08U DummyDatas[DMA_MAX_SIZE+(SPICMD_BUFF_LEN*2)+32] __cacheline_aligned;
+static I08U BurstDatas[DMA_MAX_SIZE+(SPICMD_BUFF_LEN*2)+32] __cacheline_aligned;
+#else
 static I08U NullDatas[DMA_MAX_SIZE+32] __cacheline_aligned;
 static I08U DummyDatas[DMA_MAX_SIZE+32] __cacheline_aligned;
 static I08U BurstDatas[DMA_MAX_SIZE+32] __cacheline_aligned;
+#endif
 
 static I08U FFData[SPICMD_BUFF_LEN+32] __cacheline_aligned;
 static I08U Buffout[SPICMD_BUFF_LEN+32] __cacheline_aligned;
@@ -85,8 +96,13 @@ static I08U Buffin[SPICMD_BUFF_LEN+32] __cacheline_aligned;
 
 void Tcc353xTccspiInit(void)
 {
+#if defined (_RW_AT_ONCE_)
+	TcpalMemset(&DummyDatas[0], 0x00, DMA_MAX_SIZE+(SPICMD_BUFF_LEN*2));
+	TcpalMemset(&NullDatas[0], 0x00, DMA_MAX_SIZE+(SPICMD_BUFF_LEN*2));
+#else
 	TcpalMemset(&DummyDatas[0], 0x00, DMA_MAX_SIZE);
 	TcpalMemset(&NullDatas[0], 0x00, DMA_MAX_SIZE);
+#endif
 }
 
 I32S Tcc353xTccspiRead(I32S _moduleIndex, I32S _chipAddress,
@@ -124,9 +140,17 @@ I32S Tcc353xTccspiRead(I32S _moduleIndex, I32S _chipAddress,
 		I32S cmax;
 		I32S cremain;
 		I32S i;
+		I32S burstSize;
 
-		cmax = (_size / DMA_MAX_SIZE);
-		cremain = (_size % DMA_MAX_SIZE);
+#if defined (_RW_AT_ONCE_)
+		/* for stability */
+		burstSize = _MAX_BURST_SIZE_;
+#else
+		burstSize = DMA_MAX_SIZE;
+#endif
+
+		cmax = (_size / burstSize);
+		cremain = (_size % burstSize);
 
 		for (i = 0; i < cmax; i++) {
 			result =
@@ -134,8 +158,8 @@ I32S Tcc353xTccspiRead(I32S _moduleIndex, I32S _chipAddress,
 						 _chipAddress,
 						 _registerAddr,
 						 &_outData[i *
-							   DMA_MAX_SIZE],
-						 DMA_MAX_SIZE - 1,
+							   burstSize],
+						 burstSize - 1,
 						 _READ_FLAG_);
 			if (result != TCC353X_RETURN_SUCCESS) {
 				Tcc353xTccspiReset(_moduleIndex,
@@ -150,7 +174,7 @@ I32S Tcc353xTccspiRead(I32S _moduleIndex, I32S _chipAddress,
 						 _chipAddress,
 						 _registerAddr,
 						 &_outData[i *
-							   DMA_MAX_SIZE],
+							   burstSize],
 						 cremain - 1, _READ_FLAG_);
 			if (result != TCC353X_RETURN_SUCCESS) {
 				Tcc353xTccspiReset(_moduleIndex,
@@ -204,9 +228,17 @@ I32S Tcc353xTccspiWrite(I32S _moduleIndex, I32S _chipAddress,
 		I32S cmax;
 		I32S cremain;
 		I32S i;
+		I32S burstSize;
 
-		cmax = (_size / DMA_MAX_SIZE);
-		cremain = (_size % DMA_MAX_SIZE);
+#if defined (_RW_AT_ONCE_)
+		/* for stability */
+		burstSize = _MAX_BURST_SIZE_;
+#else
+		burstSize = DMA_MAX_SIZE;
+#endif
+
+		cmax = (_size / burstSize);
+		cremain = (_size % burstSize);
 
 		for (i = 0; i < cmax; i++) {
 			result =
@@ -214,8 +246,8 @@ I32S Tcc353xTccspiWrite(I32S _moduleIndex, I32S _chipAddress,
 						 _chipAddress,
 						 _registerAddr,
 						 &_inputData[i *
-							     DMA_MAX_SIZE],
-						 DMA_MAX_SIZE - 1,
+							     burstSize],
+						 burstSize - 1,
 						 _WRITE_FLAG_);
 			if (result != TCC353X_RETURN_SUCCESS) {
 				Tcc353xTccspiReset(_moduleIndex,
@@ -230,7 +262,7 @@ I32S Tcc353xTccspiWrite(I32S _moduleIndex, I32S _chipAddress,
 						 _chipAddress,
 						 _registerAddr,
 						 &_inputData[i *
-							     DMA_MAX_SIZE],
+							     burstSize],
 						 cremain - 1,
 						 _WRITE_FLAG_);
 			if (result != TCC353X_RETURN_SUCCESS) {
@@ -361,6 +393,84 @@ static I32S Tcc353xTccspiSingleRW(I32S _moduleIndex, I32S _chipAddress,
 	return TCC353X_RETURN_SUCCESS;
 }
 
+#ifdef _RW_AT_ONCE_
+static I32S Tcc353xTccspiMultiRW(I32S _moduleIndex, I32S _chipAddress,
+				 I08U _registerAddr, I08U * _data,
+				 I32S _size, I08U _writeFlag)
+{
+	I08U crc;
+	I08U fixedMode = 0;
+
+	if (_registerAddr & 0x80)
+		fixedMode = 1;
+	else
+		fixedMode = 0;
+
+	_registerAddr = (_registerAddr & 0x7F);
+
+	if (_size > _MAX_BURST_SIZE_)
+		return (-1);
+
+	/* MAX 16KB (Output buffer max size 7KB) (LENGTH + 1 Byte) */
+	/* start bit(1) + chip_id(7) */
+	Buffin[0] = (I08U) (_chipAddress);	/* start bit(1) + chip_id(7) */
+	/* mode(1) + rw(1) + fix(1) + addr(5) */
+	Buffin[1] =
+	    1 << 7 | _writeFlag << 6 | fixedMode << 5 |
+	    ((_registerAddr & 0x7c0) >> 6);
+	/* addr(6bit) + length(2bit) */
+	Buffin[2] =
+	    (I08U) ((_registerAddr & 0x03f) << 2 |
+		    ((_size & 0x3000) >> 12));
+	/* length(8bit) */
+	Buffin[3] = (I08U) ((_size & 0xff0) >> 4);
+	Buffin[4] = (I08U) ((_size & 0xf) << 4);
+	crc = Tcc353xCheckCrc7(Buffin, 36);
+	/* length(4) + crc(4) */
+	Buffin[4] = (I08U) (((_size & 0xf) << 4) | ((crc & 0x7f) >> 3));
+	/* crc(3) + end bit(5) */
+	Buffin[5] = ((crc & 0x07) << 5) | 0x1f;
+	Buffin[6] = 0xff;
+	Buffin[7] = 0xff;
+
+	if (_writeFlag == 0) {
+		TcpalMemcpy(&DummyDatas[0], Buffin, SPICMD_BUFF_LEN);
+		TcpalMemset(&DummyDatas[SPICMD_BUFF_LEN], 0x00, _size + 1);
+		TcpalMemset(&DummyDatas[SPICMD_BUFF_LEN+_size+1], 0xFF, SPICMD_BUFF_LEN);
+
+		Tcc353xSpiRW(_moduleIndex, DummyDatas, BurstDatas, _size + 1 + (SPICMD_BUFF_LEN*2), 0);
+		TcpalMemcpy(_data, &BurstDatas[SPICMD_BUFF_LEN], _size+1);
+		if (BurstDatas[7] != SPICMD_ACK) {	/* ack */
+			TcpalPrintErr((I08S *) "[TCC353X] Burst %s ACK error\n",
+				      _writeFlag ? "Write" : "Read");
+			TcpalPrintErr((I08S *)
+				      "[TCC353X] [%x][%x][%x][%x] [%x][%x][%x][%x]//[%x]\n",
+				      BurstDatas[0], BurstDatas[1], BurstDatas[2],
+				      BurstDatas[3], BurstDatas[4], BurstDatas[5],
+				      BurstDatas[6], BurstDatas[7], crc);
+			return TCC353X_RETURN_FAIL;
+		}
+	} else {
+		TcpalMemcpy(&BurstDatas[0], Buffin, SPICMD_BUFF_LEN);
+		TcpalMemcpy(&BurstDatas[SPICMD_BUFF_LEN], _data, _size + 1);
+		TcpalMemset(&BurstDatas[SPICMD_BUFF_LEN+_size+1], 0xFF, SPICMD_BUFF_LEN);
+
+		Tcc353xSpiRW(_moduleIndex, BurstDatas, DummyDatas, _size + 1 + (SPICMD_BUFF_LEN*2), 0);
+		if (DummyDatas[7] != SPICMD_ACK) {	/* ack */
+			TcpalPrintErr((I08S *) "[TCC353X] Burst %s ACK error\n",
+				      _writeFlag ? "Write" : "Read");
+			TcpalPrintErr((I08S *)
+				      "[TCC353X] [%x][%x][%x][%x] [%x][%x][%x][%x]//[%x]\n",
+				      DummyDatas[0], DummyDatas[1], DummyDatas[2],
+				      DummyDatas[3], DummyDatas[4], DummyDatas[5],
+				      DummyDatas[6], DummyDatas[7], crc);
+			return TCC353X_RETURN_FAIL;
+		}
+	}
+
+	return TCC353X_RETURN_SUCCESS;
+}
+#else
 static I32S Tcc353xTccspiMultiRW(I32S _moduleIndex, I32S _chipAddress,
 				 I08U _registerAddr, I08U * _data,
 				 I32S _size, I08U _writeFlag)
@@ -436,6 +546,6 @@ static I32S Tcc353xTccspiMultiRW(I32S _moduleIndex, I32S _chipAddress,
 		Tcc353xSpiRW(_moduleIndex, FFData, Buffout,
 			     SPICMD_BUFF_LEN, 0);
 	}
-
 	return TCC353X_RETURN_SUCCESS;
 }
+#endif

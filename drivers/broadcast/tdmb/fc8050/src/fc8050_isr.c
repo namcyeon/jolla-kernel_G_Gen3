@@ -65,47 +65,30 @@ void fc8050_isr(HANDLE hDevice)
 		bbm_word_read(hDevice, BBM_BUF_STATUS, &mfIntStatus);
 		//bbm_word_write(hDevice, BBM_BUF_STATUS, mfIntStatus);
 		//bbm_word_write(hDevice, BBM_BUF_STATUS, 0x0000);
-	
+
 		if(mfIntStatus & 0x0100) {
 			bbm_word_read(hDevice, BBM_BUF_FIC_THR, &size);
-
-			//wonhee.jeong test 
-			//if(size > 516)
-			//{
-				//printk("FIC Data size is bigger than 516.\n");
-			//}
-			//
-			
 			size += 1;
-			
 			if(size-1) {
 				bbm_data(hDevice, BBM_COM_FIC_DATA, &ficBuffer[0], size);
 
-				if(pFicCallback) 
+				if(pFicCallback)
 					(*pFicCallback)((fci_u32) hDevice, &ficBuffer[0], size);
-				
+
 			} 
 		}
 
 		for(i=0; i<8; i++) {
 			if(mfIntStatus & (1<<i)) {
 				bbm_word_read(hDevice, BBM_BUF_CH0_THR+i*2, &size);
-
-				//wonhee.jeong test 
-				//if(size > 8196)
-				//{
-					//printk("MSC Data size is bigger than 8196.\n");
-				//}
-				//
-				
 				size += 1;
 
 				if(size-1) {
 					fci_u8  subChId;
-					
+
 					bbm_read(hDevice, BBM_BUF_CH0_SUBCH+i, &subChId);
 					subChId = subChId & 0x3f;
-					
+
 					{
 						fci_u8 rsSubChId;
 
@@ -129,7 +112,7 @@ void fc8050_isr(HANDLE hDevice)
 						if(pMscCallback)
 							(*pMscCallback)(gMscUserData, subChId, &mscBuffer[0], size);
 					}
-						
+
 				}
 			}
 		}
