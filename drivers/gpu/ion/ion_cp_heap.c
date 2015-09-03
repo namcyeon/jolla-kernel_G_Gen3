@@ -23,13 +23,11 @@
 #include <linux/mm.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
-#include <linux/vmalloc.h>
 #include <linux/memory_alloc.h>
 #include <linux/seq_file.h>
 #include <linux/fmem.h>
 #include <linux/iommu.h>
 #include <linux/dma-mapping.h>
-#include <trace/events/kmem.h>
 
 #include <asm/mach/map.h>
 
@@ -113,7 +111,6 @@ enum {
 	HEAP_PROTECTED = 1,
 };
 
-
 #define DMA_ALLOC_RETRIES	5
 
 static int ion_cp_protect_mem(unsigned int phy_base, unsigned int size,
@@ -144,10 +141,8 @@ static int allocate_heap_memory(struct ion_heap *heap)
 						&(cp_heap->handle),
 						0,
 						&attrs);
-		if (!cp_heap->cpu_addr) {
-			trace_ion_cp_alloc_retry(tries);
+		if (!cp_heap->cpu_addr)
 			msleep(20);
-		}
 	}
 
 	if (!cp_heap->cpu_addr)
@@ -720,21 +715,18 @@ int ion_cp_cache_ops(struct ion_heap *heap, struct ion_buffer *buffer,
 				ptr = ioremap(buff_phys, size_to_vmap);
 				if (ptr) {
 					switch (cmd) {
-					case ION_IOC_CLEAN_CACHES_COMPAT:
 					case ION_IOC_CLEAN_CACHES:
 						dmac_clean_range(ptr,
 							ptr + size_to_vmap);
 						outer_cache_op =
 							outer_clean_range;
 						break;
-					case ION_IOC_INV_CACHES_COMPAT:
 					case ION_IOC_INV_CACHES:
 						dmac_inv_range(ptr,
 							ptr + size_to_vmap);
 						outer_cache_op =
 							outer_inv_range;
 						break;
-					case ION_IOC_CLEAN_INV_CACHES_COMPAT:
 					case ION_IOC_CLEAN_INV_CACHES:
 						dmac_flush_range(ptr,
 							ptr + size_to_vmap);
@@ -758,17 +750,14 @@ int ion_cp_cache_ops(struct ion_heap *heap, struct ion_buffer *buffer,
 		}
 	} else {
 		switch (cmd) {
-		case ION_IOC_CLEAN_CACHES_COMPAT:
 		case ION_IOC_CLEAN_CACHES:
 			dmac_clean_range(vaddr, vaddr + length);
 			outer_cache_op = outer_clean_range;
 			break;
-		case ION_IOC_INV_CACHES_COMPAT:
 		case ION_IOC_INV_CACHES:
 			dmac_inv_range(vaddr, vaddr + length);
 			outer_cache_op = outer_inv_range;
 			break;
-		case ION_IOC_CLEAN_INV_CACHES_COMPAT:
 		case ION_IOC_CLEAN_INV_CACHES:
 			dmac_flush_range(vaddr, vaddr + length);
 			outer_cache_op = outer_flush_range;

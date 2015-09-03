@@ -22,7 +22,6 @@
 #include "kgsl.h"
 #include "kgsl_pwrscale.h"
 #include "kgsl_device.h"
-#include "kgsl_trace.h"
 
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
 #include <linux/module.h>
@@ -36,6 +35,8 @@
 
 struct tz_priv {
 	int governor;
+	unsigned int no_switch_cnt;
+	unsigned int skip_cnt;
 	struct kgsl_power_stats bin;
 	unsigned int idle_dcvs;
 };
@@ -49,6 +50,9 @@ spinlock_t tz_lock;
  * frame length, but less than the idle timer.
  */
 #define CEILING			50000
+#define SWITCH_OFF		200
+#define SWITCH_OFF_RESET_TH	40
+#define SKIP_COUNTER		500
 #define TZ_RESET_ID		0x3
 #define TZ_UPDATE_ID		0x4
 #define TZ_INIT_ID		0x6
@@ -121,12 +125,8 @@ static ssize_t tz_governor_store(struct kgsl_device *device,
 	else if (!strncmp(str, "performance", 11))
 		priv->governor = TZ_GOVERNOR_PERFORMANCE;
 
-	if (priv->governor == TZ_GOVERNOR_PERFORMANCE) {
+	if (priv->governor == TZ_GOVERNOR_PERFORMANCE)
 		kgsl_pwrctrl_pwrlevel_change(device, pwr->max_pwrlevel);
-		pwr->default_pwrlevel = pwr->max_pwrlevel;
-	} else {
-		pwr->default_pwrlevel = pwr->init_pwrlevel;
-	}
 
 	mutex_unlock(&device->mutex);
 	return count;
@@ -153,8 +153,7 @@ static void tz_wake(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 #else
 		priv->governor == TZ_GOVERNOR_ONDEMAND)
 #endif
-		if (device->pwrctrl.constraint.type == KGSL_CONSTRAINT_NONE)
-			kgsl_pwrctrl_pwrlevel_change(device,
+		kgsl_pwrctrl_pwrlevel_change(device,
 					device->pwrctrl.default_pwrlevel);
 }
 
@@ -224,13 +223,27 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 		(priv->bin.total_time < FLOOR))
 		return;
 
-	/* If there is an extended block of busy processing, set
-	 * frequency to turbo.  Otherwise run the normal algorithm.
+	/* If the GPU has stayed in turbo mode for a while, *
+	 * stop writing out values. */
+	if (pwr->active_pwrlevel == 0) {
+		if (priv->no_switch_cnt > SWITCH_OFF) {
+			priv->skip_cnt++;
+			if (priv->skip_cnt > SKIP_COUNTER) {
+				priv->no_switch_cnt -= SWITCH_OFF_RESET_TH;
+				priv->skip_cnt = 0;
+			}
+			return;
+		}
+		priv->no_switch_cnt++;
+	} else {
+		priv->no_switch_cnt = 0;
+	}
+
+	/* If there is an extended block of busy processing,
+	 * increase frequency.  Otherwise run the normal algorithm.
 	 */
 	if (priv->bin.busy_time > CEILING) {
-		val = 0;
-		kgsl_pwrctrl_pwrlevel_change(device,
-				KGSL_PWRLEVEL_TURBO);
+		val = -1;
 	} else if (priv->idle_dcvs) {
 		idle = priv->bin.total_time - priv->bin.busy_time;
 		idle = (idle > 0) ? idle : 0;
@@ -273,7 +286,6 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 					pwr->active_pwrlevel,
 					priv->bin.total_time,
 					priv->bin.busy_time);
-
 #else
 			val = __secure_tz_entry3(TZ_UPDATE_ID,
 				pwr->active_pwrlevel,
@@ -289,21 +301,9 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 	 */
 	if (val > 0)
 		val *= pwr->step_mul;
-
-	if ((pwr->constraint.type == KGSL_CONSTRAINT_NONE) ||
-			(time_after(jiffies, pwr->constraint.expires))) {
-
+	if (val)
 		kgsl_pwrctrl_pwrlevel_change(device,
 					     pwr->active_pwrlevel + val);
-		if (pwr->constraint.type != KGSL_CONSTRAINT_NONE) {
-			/* Trace the constraint being un-set by the driver */
-			trace_kgsl_constraint(device,
-				pwr->constraint.type,
-				pwr->active_pwrlevel, 0);
-			/*Invalidate the constraint set */
-			pwr->constraint.type = KGSL_CONSTRAINT_NONE;
-		}
-	}
 }
 
 static void tz_busy(struct kgsl_device *device,
@@ -319,9 +319,10 @@ static void tz_sleep(struct kgsl_device *device,
 	struct tz_priv *priv = pwrscale->priv;
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 
+	priv->no_switch_cnt = 0;
 	priv->bin.total_time = 0;
 	priv->bin.busy_time = 0;
-
+	
 	/* Make sure the GPU frequency drops. */
 	kgsl_pwrctrl_pwrlevel_change(device, pwr->min_pwrlevel);
 }
@@ -337,6 +338,7 @@ static int tz_init(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 	priv = pwrscale->priv = kzalloc(sizeof(struct tz_priv), GFP_KERNEL);
 	if (pwrscale->priv == NULL)
 		return -ENOMEM;
+
 	priv->idle_dcvs = 0;
 	priv->governor = TZ_GOVERNOR_SIMPLE;
 	spin_lock_init(&tz_lock);
