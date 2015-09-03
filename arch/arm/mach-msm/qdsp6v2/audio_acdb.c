@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,7 +18,6 @@
 #include <linux/msm_ion.h>
 #include <linux/mm.h>
 #include <mach/qdsp6v2/audio_acdb.h>
-
 
 #define MAX_NETWORKS		15
 
@@ -610,7 +609,9 @@ static int acdb_open(struct inode *inode, struct file *f)
 	}
 
 	atomic_inc(&usage_count);
+
 	return result;
+
 }
 
 static int deregister_memory(void)
@@ -674,7 +675,7 @@ static int register_memory(void)
 	atomic64_set(&acdb_data.mem_len, mem_len);
 	mutex_unlock(&acdb_data.acdb_mutex);
 
-	pr_debug("%s done! paddr = 0x%lx, "
+	pr_debug("%s: done! paddr = 0x%lx, "
 		"kvaddr = 0x%lx, len = x%lx\n",
 		 __func__,
 		(long)atomic64_read(&acdb_data.paddr),
@@ -868,7 +869,7 @@ done:
 static int acdb_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int result = 0;
-	int size = vma->vm_end - vma->vm_start;
+	uint32_t size = vma->vm_end - vma->vm_start;
 
 	pr_debug("%s\n", __func__);
 

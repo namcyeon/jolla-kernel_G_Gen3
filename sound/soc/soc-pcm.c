@@ -25,6 +25,8 @@
 #include <linux/debugfs.h>
 #include <linux/dma-mapping.h>
 #include <linux/export.h>
+#include <linux/bug.h>
+#include <linux/ratelimit.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -62,12 +64,12 @@ int snd_soc_dpcm_can_be_free_stop(struct snd_soc_pcm_runtime *fe,
 		struct snd_soc_pcm_runtime *be, int stream)
 {
 	struct snd_soc_dpcm_params *dpcm_params;
-	pr_debug("%s stream %d\n",__func__,stream);
+
 	list_for_each_entry(dpcm_params, &be->dpcm[stream].fe_clients, list_fe) {
-		pr_debug("%s dpcm_params->fe %s\n",__func__,dpcm_params->fe->dai_link->name);
-		if (dpcm_params->fe == fe) 
+
+		if (dpcm_params->fe == fe)
 			continue;
-		pr_debug("%s dpcm_params->fe->dpcm[stream].state %d\n",__func__,dpcm_params->fe->dpcm[stream].state);
+
 		if (dpcm_params->fe->dpcm[stream].state == SND_SOC_DPCM_STATE_START ||
 			dpcm_params->fe->dpcm[stream].state == SND_SOC_DPCM_STATE_PAUSED ||
 			dpcm_params->fe->dpcm[stream].state == SND_SOC_DPCM_STATE_SUSPEND)
@@ -1177,7 +1179,7 @@ static int soc_dpcm_be_dai_startup(struct snd_soc_pcm_runtime *fe, int stream)
 			continue;
 
 		dev_dbg(be->dev, "dpcm: open BE %s\n", be->dai_link->name);
-		pr_debug("%s be->dai_link->name stream to be started %s\n",__func__,be->dai_link->name);
+
 		be_substream->runtime = be->dpcm[stream].runtime;
 		err = soc_pcm_open(be_substream);
 		if (err < 0) {
@@ -1267,7 +1269,7 @@ static int soc_dpcm_fe_dai_startup(struct snd_pcm_substream *fe_substream)
 	}
 
 	dev_dbg(fe->dev, "dpcm: open FE %s\n", fe->dai_link->name);
-	pr_debug("%s start front end dai %s\n",__func__,fe->dai_link->name);
+
 	/* start the DAI frontend */
 	ret = soc_pcm_open(fe_substream);
 	if (ret < 0) {
@@ -1649,8 +1651,10 @@ int soc_dpcm_fe_dai_trigger(struct snd_pcm_substream *substream, int cmd)
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
-	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		fe->dpcm[stream].state = SND_SOC_DPCM_STATE_STOP;
+		break;
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		fe->dpcm[stream].state = SND_SOC_DPCM_STATE_PAUSED;
 		break;
 	}
 
@@ -1752,11 +1756,10 @@ static int soc_dpcm_be_dai_hw_free(struct snd_soc_pcm_runtime *fe, int stream)
 		struct snd_soc_pcm_runtime *be = dpcm_params->be;
 		struct snd_pcm_substream *be_substream =
 			snd_soc_dpcm_get_substream(be, stream);
-		pr_debug("%s dailink name %s stream val %d\n", __func__, be->dai_link->name, stream);
+
 		/* is this op for this BE ? */
-		if (!snd_soc_dpcm_be_can_update(fe, be, stream)) {
+		if (!snd_soc_dpcm_be_can_update(fe, be, stream))
 			continue;
-		}
 
 		/* only free hw when no longer used - check all FEs */
 		if (!snd_soc_dpcm_can_be_free_stop(fe, be, stream))
@@ -1765,8 +1768,13 @@ static int soc_dpcm_be_dai_hw_free(struct snd_soc_pcm_runtime *fe, int stream)
 		if ((be->dpcm[stream].state != SND_SOC_DPCM_STATE_HW_PARAMS) &&
 		    (be->dpcm[stream].state != SND_SOC_DPCM_STATE_PREPARE) &&
 			(be->dpcm[stream].state != SND_SOC_DPCM_STATE_HW_FREE) &&
-			(be->dpcm[stream].state != SND_SOC_DPCM_STATE_PAUSED) &&
-		    (be->dpcm[stream].state != SND_SOC_DPCM_STATE_STOP))
+		    (be->dpcm[stream].state != SND_SOC_DPCM_STATE_PAUSED) &&
+		    (be->dpcm[stream].state != SND_SOC_DPCM_STATE_STOP) &&
+		    !((be->dpcm[stream].state == SND_SOC_DPCM_STATE_START) &&
+		      ((fe->dpcm[stream].state != SND_SOC_DPCM_STATE_START) &&
+			(fe->dpcm[stream].state != SND_SOC_DPCM_STATE_PAUSED) &&
+			(fe->dpcm[stream].state !=
+						SND_SOC_DPCM_STATE_SUSPEND))))
 			continue;
 
 		dev_dbg(be->dev, "dpcm: hw_free BE %s\n",
@@ -1789,7 +1797,7 @@ int soc_dpcm_fe_dai_hw_free(struct snd_pcm_substream *substream)
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_FE;
 
 	dev_dbg(fe->dev, "dpcm: hw_free FE %s\n", fe->dai_link->name);
-	pr_debug("%s fe->dai_name %s\n",__func__, fe->dai_link->name);
+
 	/* call hw_free on the frontend */
 	err = soc_pcm_hw_free(substream);
 	if (err < 0)
@@ -2023,8 +2031,9 @@ int soc_dpcm_runtime_update(struct snd_soc_dapm_widget *widget)
 
 		paths = fe_path_get(fe, SNDRV_PCM_STREAM_PLAYBACK, &list);
 		if (paths < 0) {
-			dev_warn(fe->dev, "%s no valid %s route from source to sink\n",
+			pr_warn_ratelimited("%s no valid %s route from source to sink\n",
 					fe->dai_link->name,  "playback");
+			WARN_ON(1);
 			ret = paths;
 			goto out;
 		}
@@ -2054,7 +2063,7 @@ capture:
 
 		paths = fe_path_get(fe, SNDRV_PCM_STREAM_CAPTURE, &list);
 		if (paths < 0) {
-			dev_warn(fe->dev, "%s no valid %s route from source to sink\n",
+			pr_warn_ratelimited("%s no valid %s route from source to sink\n",
 					fe->dai_link->name,  "capture");
 			ret = paths;
 			goto out;
@@ -2430,7 +2439,7 @@ int soc_dpcm_fe_dai_open(struct snd_pcm_substream *fe_substream)
 	fe->dpcm[stream].runtime = fe_substream->runtime;
 
 	if (fe_path_get(fe, stream, &list) <= 0) {
-		dev_warn(fe->dev, "asoc: %s no valid %s route from source to sink\n",
+		pr_warn_ratelimited("asoc: %s no valid %s route from source to sink\n",
 			fe->dai_link->name, stream ? "capture" : "playback");
 			return -EINVAL;
 	}
