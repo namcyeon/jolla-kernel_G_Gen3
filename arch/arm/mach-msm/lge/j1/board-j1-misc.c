@@ -312,13 +312,11 @@ static struct platform_device android_vibrator_device = {
 		.platform_data = &vibrator_data,
 	},
 };
-#endif /* CONFIG_ANDROID_VIBRATOR */
 
 static struct platform_device *misc_devices[] __initdata = {
-#ifdef CONFIG_ANDROID_VIBRATOR
 	&android_vibrator_device,
-#endif
 };
+#endif /* CONFIG_ANDROID_VIBRATOR */
 
 #ifdef CONFIG_SII8334_MHL_TX
 
