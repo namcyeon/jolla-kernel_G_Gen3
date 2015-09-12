@@ -38,12 +38,10 @@ int broadcast_drv_if_power_on(void)
 		gpMPI_Buffer = (uint8*)&gpMPI_Array[0];
 #endif // FC8050_USES_STATIC_BUFFER
 	}
-//LGE_BROADCAST_I_0907
+//                    
 	if(tunerbb_drv_fc8050_is_on() == TRUE)
 	{
-#ifdef CONFIG_FC8050_DEBUG
 		printk("tdmb_fc8050_power_on state true\n");
-#endif
 
 		retval = tunerbb_drv_fc8050_stop();
 		retval = tunerbb_drv_fc8050_power_off();
@@ -87,13 +85,9 @@ int broadcast_drv_if_open(void)
 	int8 res = ERROR;
 	boolean retval = FALSE;
 
-#ifdef CONFIG_FC8050_DEBUG
 	printk("broadcast_drv_if_open In\n");
-#endif
 	retval = tunerbb_drv_fc8050_init();
-#ifdef CONFIG_FC8050_DEBUG
 	printk("broadcast_drv_if_open  Out\n");
-#endif
 	if(retval == TRUE)
 	{
 		res = OK;
@@ -109,9 +103,7 @@ int broadcast_drv_if_close(void)
 
 	if(tunerbb_drv_fc8050_is_on() == TRUE)
 	{
-#ifdef CONFIG_FC8050_DEBUG
 		printk("tdmb_fc8050_power_on state close-->stop\n");
-#endif
 
 		retval = tunerbb_drv_fc8050_stop();
 
@@ -182,9 +174,7 @@ int broadcast_drv_if_get_ch_info(char* buffer, unsigned int* buffer_size)
 
 	if(buffer == NULL || buffer_size == NULL)
 	{
-#ifdef CONFIG_FC8050_DEBUG
 		printk("broadcast_drv_if_get_ch_info argument error\n");
-#endif
 		return rc;
 	}
 
@@ -202,17 +192,13 @@ int broadcast_drv_if_get_dmb_data(char** buffer_ptr, unsigned int* buffer_size, 
 {
 	if(gpMPI_Buffer == NULL)
 	{
-#ifdef CONFIG_FC8050_DEBUG
 		printk("gpMPI_FIFO_Buffer == NULL\n");
-#endif
 		return ERROR;
 	}
 
 	if(buffer_ptr == NULL || buffer_size == NULL)
 	{
-#ifdef CONFIG_FC8050_DEBUG
 		printk(" input arg is null\n");
-#endif
 		return ERROR;
 	}
 
@@ -224,9 +210,7 @@ int broadcast_drv_if_get_dmb_data(char** buffer_ptr, unsigned int* buffer_size, 
 
 	if(user_buffer_size < tdmb_real_read_size[gBBBuffer_ridx])
 	{
-#ifdef CONFIG_FC8050_DEBUG
 		printk("user buffer is not enough %d", user_buffer_size);
-#endif
 		return ERROR;
 	}
 
@@ -274,9 +258,7 @@ int broadcast_drv_if_isr(void)
 
 	if(gpMPI_Buffer == NULL)
 	{
-#ifdef CONFIG_FC8050_DEBUG
 		printk("gpMPI_FIFO_Buffer== NULL");
-#endif
 		return ERROR;
 	}
 
@@ -308,9 +290,7 @@ int broadcast_drv_if_isr(void)
 	{
 		if(s_opmode != FC8050_BLT_TEST)
 		{
-#ifdef CONFIG_FC8050_DEBUG
 			printk("### buffer is full, skip the data (ridx=%d, widx=%d)  ###\n", gBBBuffer_ridx, gBBBuffer_widx);
-#endif
 		}
 		return ERROR;
 	}

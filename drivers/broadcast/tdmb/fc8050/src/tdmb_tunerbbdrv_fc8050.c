@@ -32,7 +32,7 @@
 #undef FEATURE_FIC_BER
 #define LOCK_TIME_TUNING0	/* Fast Channel Scan */
 
-// LGE ADD
+//        
 #define	FREQ_SEARCH_IN_TABLE		/* Freq conversion in Table Searching */
 #define	CH_LOW_NUM		71		/* 7A index 71 for UI */
 
@@ -50,7 +50,7 @@
 #define	CH_GAP_FREQ 		1728	/* Channel Center frequency interval between channel number */
 #define	TDMB_ENS_NUM		7		/* Korea TDMB Ensemble Number 7 ~ 13 */
 #endif
-// LGE ADD
+//        
 
 #define MAX_MSC_BER			20000
 #define MAX_VA_BER			20000
@@ -135,7 +135,7 @@ fci_u8 msc_multi_data[188*8*8];
 /*============================================================
 **    7.   Static Variables
 *============================================================*/
-//LGE ADD
+//       
 #ifdef FREQ_SEARCH_IN_TABLE
 
 	static int32 gKOREnsembleFullFreqTbl[MAX_KOREABAND_FULL_CHANNEL][2] = 
@@ -205,7 +205,7 @@ int tunerbb_drv_fc8050_is_on(void)
 	return tdmb_fc8050_tdmb_is_on();
 }
 
-// LGE ADD
+//        
 static int32	tunerbb_drv_convert_chnum_to_freq(uint32 ch_num)
 {
 #ifdef FREQ_SEARCH_IN_TABLE
@@ -243,7 +243,7 @@ static int32	tunerbb_drv_convert_chnum_to_freq(uint32 ch_num)
 #endif
 }
 
-// LGE ADD
+//        
 /*======================================================= 
     Function 		: tunerbb_drv_fc8050_fic_cb
     Description		: set fic data param after ISR process
@@ -366,9 +366,7 @@ int8	tunerbb_drv_fc8050_init(void)
 	if(res)
 	{
 		is_tdmb_probe = 0;
-#ifdef CONFIG_FC8050_DEBUG
 		printk("fc8050 chip id read error , so is_tdmb_probe = %d\n", is_tdmb_probe);
-#endif
 		return FC8050_RESULT_ERROR;
 	}
 	else
@@ -426,9 +424,7 @@ int8	tunerbb_drv_fc8050_init(void)
 
 	if(res)
 	{
-#ifdef CONFIG_FC8050_DEBUG
 		printk("[FC8050] BBM_TUNER_SELECT Error = (%d)\n", res);
-#endif
 		return FC8050_RESULT_ERROR; 
 	}
 	else
@@ -565,10 +561,8 @@ int8	tunerbb_drv_fc8050_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
 	{
 		dmb_bb_info->msc_ber = 20000;
 		dmb_bb_info->tp_err_cnt = 255;
-
-#ifdef CONFIG_FC8050_DEBUG
+		
 		printk("is_tdmb_probe 0. so msc_ber is 20000, tp_err_cnt = 255. \n");
-#endif
 		return FC8050_RESULT_SUCCESS;
 	}
 		
@@ -960,31 +954,31 @@ int8	tunerbb_drv_fc8050_read_data(uint8* buffer, uint32* buffer_size)
 	return retval;
 }
 
-/*-------------------------------------------------------------------------------------
-int8 tunerbb_drv_fc8050_process_multi_data(uint8 subch_cnt, uint8* input_buf, uint32 input_size, uint32* read_size)
-    (1)   Process Multi or Single Service Data. The Driver must process multi or single data and stroe them in other buffer
-           for supplying data requested by tunerbb_drv_fc8050_get_multi_data( ) function
-    (2)   Return Value
-           Sucess : 1
-           Fail : 0 or negative interger (If there is error code)
-    (3)   Argument
-           uint8 subch_cnt (IN)
-                - Service Sub-Channel Count
-           uint8* input_buf (IN)
-               - The buffer pointer  containing Multi or Single Data(FIC/DMB/DAB or Mixed data) read from TSIF or EBI2 buffer
-           uint32 input_size (IN)
-              - input_buf has input_size data
-           uint32* read_size (IN /OUT)
-             - data size + subch_id header size supply to Application
+/*                                                                                     
+                                                                                                                   
+                                                                                                                           
+                                                                                        
+                      
+                     
+                                                                 
+                  
+                               
+                                           
+                                
+                                                                                                                             
+                                 
+                                             
+                                      
+                                                                     
 
-        <notice> 
-             (1) read_size is the mulit or single data + header size.
-             (2) LGE supply the headr type
-             (3) For example
-                 - DMB Single Service case : read_size = DMB MSC Data size + dmb_header size
-                 - FIC + DMB + PACKET multi case : 
-                       read_size FIC data size + dmb_header + DMB data size + dmb_header + Packet data size + dmb_header 
---------------------------------------------------------------------------------------- */
+                 
+                                                                     
+                                          
+                            
+                                                                                            
+                                                   
+                                                                                                                         
+                                                                                        */
 #ifdef STREAM_TS_UPLOAD
 int8	tunerbb_drv_fc8050_process_multi_data(uint8 subch_cnt, uint8* input_buf, uint32 input_size, uint32* read_size)
 {
@@ -1302,7 +1296,7 @@ static uint32 tunerbb_drv_fc8050_get_viterbi_ber(void)	//msc_ber
 
 	if(bper == 0)
 	{
-		// LGE_INTG_090217
+		//                
 		ber = MAX_MSC_BER; 
 	}
 	else if(tbe == 0)
@@ -1365,7 +1359,7 @@ static uint32 tunerbb_drv_fc8050_get_rs_ber(void)	//va_ber
 
 	if(nframe == 0)
 	{
-		// LGE_INTG_090217
+		//                
 		ber = MAX_VA_BER;
 	}
 	else if((esum == 0) && (rserror == 0))
@@ -1374,7 +1368,7 @@ static uint32 tunerbb_drv_fc8050_get_rs_ber(void)	//va_ber
 	}
 	else
 	{
-		//LGE_INTG_090217
+		//               
 		#if (1)	//include corrected bit 
 		ber = esum;
 		#else	//not include
@@ -1495,9 +1489,7 @@ static int8 tunerbb_drv_fc8050_check_overrun(uint8 op_mode)
 
 			fc8050_isr_interruptclear();
 
-#ifdef CONFIG_FC8050_DEBUG
 			printk("======== FC8050  OvernRun and Buffer Reset Done mask (0x%X) over (0x%X) =======\n", mask,mfoverStatus );
-#endif
 		}
 	}
 
