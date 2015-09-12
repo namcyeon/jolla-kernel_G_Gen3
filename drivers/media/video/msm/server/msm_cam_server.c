@@ -2775,7 +2775,7 @@ int msm_cam_server_close_mctl_session(struct msm_cam_v4l2_device *pcam)
 		pmctl->mctl_release = NULL;
 	}
 /*                                                                  */
-#if !defined(CONFIG_LGE_GK_CAMERA) && !defined(CONFIG_MACH_APQ8064_AWIFI)
+#if !defined(CONFIG_LGE_GK_CAMERA) && !defined(CONFIG_MACH_APQ8064_AWIFI) && !defined(CONFIG_MACH_APQ8064_ALTEV)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	kref_put(&pmctl->refcount, msm_release_ion_client);
 #endif
@@ -3012,7 +3012,7 @@ static int msm_open_config(struct inode *inode, struct file *fp)
 	config_cam->p_mctl->config_device = config_cam;
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 /*                                                                  */
-#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	config_cam->pcam = g_server_dev.pcam_active[config_cam->dev_num];
 	msm_camera_v4l2_get_ion_client(config_cam->pcam);
 #else
@@ -3311,7 +3311,7 @@ static int msm_close_config(struct inode *node, struct file *f)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	D("%s Decrementing ref count of config node ", __func__);
 /*                                                                  */
-#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	msm_camera_v4l2_put_ion_client(config_cam->pcam);
 #else
 	kref_put(&config_cam->p_mctl->refcount, msm_release_ion_client);

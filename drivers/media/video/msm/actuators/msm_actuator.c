@@ -68,7 +68,7 @@ static int32_t msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 			break;
 		}
 		/*                                                                                                                                           */
-
+	
 		if (write_arr[i].reg_write_type == MSM_ACTUATOR_WRITE_DAC) {
 		    // Flow Here
 			value = (next_lens_position <<
@@ -163,7 +163,7 @@ static int32_t msm_actuator_write_focus(
 	uint16_t damping_code_step = 0;
 	uint16_t wait_time = 0;
 /*                                                                 */
-#ifndef CONFIG_MACH_APQ8064_AWIFI //                                                                            
+#if !defined(CONFIG_MACH_APQ8064_AWIFI) && !defined(CONFIG_MACH_APQ8064_ALTEV) //                                                                            
     uint16_t AF_offset_direction=0;
 	uint16_t AF_offset = 0;
 #endif
@@ -187,7 +187,7 @@ static int32_t msm_actuator_write_focus(
 	}
 	//                                                                                           
 	/* Write code based on damping_code_step in a loop */
-#ifndef CONFIG_MACH_APQ8064_AWIFI //                                                                            
+#if !defined(CONFIG_MACH_APQ8064_AWIFI) && !defined(CONFIG_MACH_APQ8064_ALTEV) //                                                                            
 	if (!use_eeprom_make_table)
 #else  // CONFIG_MACH_APQ8064_AWIFI
 	if (1)
@@ -214,7 +214,7 @@ static int32_t msm_actuator_write_focus(
 //                                                                                          
 /*                                                                 */
 			//printk("#### code_boundary : %d, a_ctrl->af_status = %d ####\n", code_boundary, a_ctrl->af_status);
-#ifndef CONFIG_MACH_APQ8064_AWIFI //                                                                              
+#if !defined(CONFIG_MACH_APQ8064_AWIFI) && !defined(CONFIG_MACH_APQ8064_ALTEV) //                                                                              
 			if((a_ctrl->af_status==6)  && (a_ctrl->AF_defocus_enable==1))  //af_status : 6 = Last AF
 			{
 				AF_offset_direction = 0x8000 & ( a_ctrl->AF_LG_defocus_offset);
@@ -301,7 +301,6 @@ static int32_t msm_actuator_move_focus(
 	uint16_t target_lens_pos = 0;
 	int16_t dest_step_pos = move_params->dest_step_pos;
 	uint16_t curr_lens_pos = 0;
-	uint16_t dest_lens_pos = 0;
 	int dir = move_params->dir;
 	int32_t num_steps = move_params->num_steps;
 	struct damping_params_t ringing_params_kernel;
@@ -349,11 +348,10 @@ static int32_t msm_actuator_move_focus(
 		return -EFAULT;
 	}
 	curr_lens_pos = a_ctrl->step_position_table[a_ctrl->curr_step_pos];
-	dest_lens_pos = a_ctrl->step_position_table[dest_step_pos];
 	a_ctrl->i2c_tbl_index = 0;
 	//                                                                                          
-	pr_err("curr_step_pos =%d dest_step_pos =%d curr_lens_pos=%d dest_lens_pos = %d\n",
-		a_ctrl->curr_step_pos, dest_step_pos, curr_lens_pos, dest_lens_pos);
+	CDBG("curr_step_pos =%d dest_step_pos =%d curr_lens_pos=%d\n",
+		a_ctrl->curr_step_pos, dest_step_pos, curr_lens_pos);
 	//                                                                                        
 
 	while (a_ctrl->curr_step_pos != dest_step_pos) {
@@ -492,7 +490,7 @@ QCT ES0 patch
 }
 
 /*                                                                                               */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 static int32_t msm_actuator_move_focus_manual(
 	struct msm_actuator_ctrl_t *a_ctrl,
 	struct msm_actuator_move_params_t *move_params)
@@ -688,7 +686,7 @@ extern uint8_t ov5693_afcalib_data[4];
 
 #define ACT_MIN_MOVE_RANGE	150 // TBD
 
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 #define ACT_POSTURE_MARGIN   (30) //                                                                            
 #define MANUAL_ACT_POSTURE_MARGIN   (-30) //                                                                                    
 
@@ -718,7 +716,7 @@ static int32_t msm_actuator_init_step_table_use_eeprom(struct msm_actuator_ctrl_
 	uint32_t max_code_size = 1;
 	uint16_t data_size = set_info->actuator_params.data_size;
 	uint16_t act_start = 0, act_macro = 0, move_range = 0;
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	uint16_t move_range_manual = 0;
 #endif
 	for (; data_size > 0; data_size--)
@@ -727,7 +725,7 @@ static int32_t msm_actuator_init_step_table_use_eeprom(struct msm_actuator_ctrl_
 	kfree(a_ctrl->step_position_table);
 	a_ctrl->step_position_table = NULL;
 /*                                                                                               */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	kfree(a_ctrl->step_position_table_manual);
 	a_ctrl->step_position_table_manual= NULL;
 #endif
@@ -831,7 +829,7 @@ static int32_t msm_actuator_init_step_table_use_eeprom(struct msm_actuator_ctrl_
 	a_ctrl->step_position_table[step_index] = cur_code;
 
 /*                                                                                               */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	a_ctrl->step_position_table_manual =
 		kmalloc(sizeof(uint16_t) *
 		(set_info->af_tuning_params.total_steps + 1), GFP_KERNEL);
@@ -852,7 +850,7 @@ static int32_t msm_actuator_init_step_table_use_eeprom(struct msm_actuator_ctrl_
 	move_range = act_macro - a_ctrl->step_position_table[1];
 
 /*                                                                                               */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	if ( act_start > MANUAL_ACT_POSTURE_MARGIN )
 		a_ctrl->step_position_table_manual[1] = act_start - MANUAL_ACT_POSTURE_MARGIN;
 	else
@@ -886,7 +884,7 @@ static int32_t msm_actuator_init_step_table_use_eeprom(struct msm_actuator_ctrl_
 			/ (set_info->af_tuning_params.total_steps - 1) + a_ctrl->step_position_table[1];
 
 /*                                                                                               */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 		a_ctrl->step_position_table_manual[step_index]
 			= ((step_index - 1) * move_range_manual+ ((set_info->af_tuning_params.total_steps - 1) >> 1))
 			/ (set_info->af_tuning_params.total_steps - 1) + a_ctrl->step_position_table_manual[1];
@@ -899,10 +897,10 @@ static int32_t msm_actuator_init_step_table_use_eeprom(struct msm_actuator_ctrl_
 	act_start, act_macro);
 
 	for (step_index = 0; step_index < a_ctrl->total_steps; step_index++)
-		printk("step_position_table[%d]= %d\n",step_index,
+		CDBG("step_position_table[%d]= %d\n",step_index,
 		a_ctrl->step_position_table[step_index]);
 /*                                                                                               */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	for (step_index = 0; step_index < a_ctrl->total_steps; step_index++)
 		printk("step_position_table_manual[%d]= %d\n",step_index,
 		a_ctrl->step_position_table_manual[step_index]);
@@ -985,7 +983,7 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 		printk("[AF] step_position_table[%d]= %d\n",step_index,
 		a_ctrl->step_position_table[step_index]);
 	//                                                                             
-
+	
 	return rc;
 }
 
@@ -1128,19 +1126,19 @@ static int32_t msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl,
 			__func__);
 		return -EFAULT;
 	}
-
+	
 	/*                                                                                                                                                   */
 #if 1
 		a_ctrl->i2c_reg_tbl =
 			kmalloc(sizeof(struct msm_camera_i2c_reg_tbl) *
-			((set_info->af_tuning_params.total_steps*2) + 1), GFP_KERNEL);
+			((set_info->af_tuning_params.total_steps*2) + 1), GFP_KERNEL); 
 #else
 		a_ctrl->i2c_reg_tbl =
 			kmalloc(sizeof(struct msm_camera_i2c_reg_tbl) *
-			(set_info->af_tuning_params.total_steps + 1), GFP_KERNEL);
+			(set_info->af_tuning_params.total_steps + 1), GFP_KERNEL); 
 #endif
 	/*                                                                                                                                                   */
-
+		
 	if (!a_ctrl->i2c_reg_tbl) {
 		pr_err("%s kmalloc fail\n", __func__);
 		return -EFAULT;
@@ -1151,6 +1149,7 @@ static int32_t msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl,
 		a_ctrl->reg_tbl_size *
 		sizeof(struct msm_actuator_reg_params_t))) {
 		kfree(a_ctrl->i2c_reg_tbl);
+		a_ctrl->i2c_reg_tbl = NULL;
 		return -EFAULT;
 	}
 
@@ -1163,6 +1162,7 @@ static int32_t msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl,
 				GFP_KERNEL);
 			if (init_settings == NULL) {
 				kfree(a_ctrl->i2c_reg_tbl);
+                a_ctrl->i2c_reg_tbl = NULL;
 				pr_err("%s Error allocating memory for init_settings\n",
 					__func__);
 				return -EFAULT;
@@ -1173,6 +1173,7 @@ static int32_t msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl,
 				sizeof(struct reg_settings_t))) {
 				kfree(init_settings);
 				kfree(a_ctrl->i2c_reg_tbl);
+                a_ctrl->i2c_reg_tbl = NULL;
 				pr_err("%s Error copying init_settings\n",
 					__func__);
 				return -EFAULT;
@@ -1184,6 +1185,7 @@ static int32_t msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl,
 			kfree(init_settings);
 			if (rc < 0) {
 				kfree(a_ctrl->i2c_reg_tbl);
+                                a_ctrl->i2c_reg_tbl = NULL;
 				pr_err("%s Error actuator_init_focus\n",
 					__func__);
 				return -EFAULT;
@@ -1387,7 +1389,7 @@ static struct msm_actuator msm_vcm_actuator_table = {
 		.actuator_init_focus = msm_actuator_init_focus,
 		.actuator_parse_i2c_params = msm_actuator_parse_i2c_params,
 /*                                                                                               */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 		.actuator_move_focus_manual = msm_actuator_move_focus_manual,
 #endif
 /*                                                                                               */

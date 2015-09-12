@@ -568,7 +568,7 @@ int vpe_enable(uint32_t clk_rate, struct msm_cam_media_controller *mctl)
 		goto dst_attach_failed;
 	}
 /*                                                                  */
-#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	msm_camera_v4l2_get_ion_client(mctl->pcam_ptr);
 #endif
@@ -609,7 +609,7 @@ int vpe_disable(struct msm_cam_media_controller *mctl)
 	iommu_detach_device(mctl->domain, vpe_ctrl->iommu_ctx_dst);
 	iommu_detach_device(mctl->domain, vpe_ctrl->iommu_ctx_src);
 /*                                                                  */
-#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	msm_camera_v4l2_put_ion_client(mctl->pcam_ptr);
 #endif
@@ -913,7 +913,7 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 	mctl = v4l2_get_subdev_hostdata(sd);
 	switch (cmd) {
 	case VIDIOC_MSM_VPE_INIT: {
-		msm_vpe_subdev_init(sd);
+		rc = msm_vpe_subdev_init(sd);
 		break;
 		}
 

@@ -104,4 +104,3 @@ uint32_t msm_gemini_io_r(uint32_t offset);
 #define MSM_GEMINI_PIPELINE_CLK_200MHZ 153 /* 12MP 153MHz */
 
 #endif /* MSM_GEMINI_HW_H */
-

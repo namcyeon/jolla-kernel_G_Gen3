@@ -326,11 +326,6 @@ void emergency_restart(void)
 }
 EXPORT_SYMBOL_GPL(emergency_restart);
 
-#ifdef CONFIG_MACH_LGE
-#if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_FHD_INVERSE_PT) || defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
-extern int mipi_lgit_lcd_off_for_shutdown(void);
-#endif
-#endif
 void kernel_restart_prepare(char *cmd)
 {
 	blocking_notifier_call_chain(&reboot_notifier_list, SYS_RESTART, cmd);
@@ -346,12 +341,6 @@ void kernel_restart_prepare(char *cmd)
 		pm8921_chg_batfet_set_ext(0);
 		mdelay(7000);
 	}
-#endif
-	
-#ifdef CONFIG_MACH_LGE
-#if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_FHD_INVERSE_PT) || defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
-       mipi_lgit_lcd_off_for_shutdown();
-#endif
 #endif
 }
 
@@ -438,11 +427,6 @@ static void kernel_shutdown_prepare(enum system_states state)
 	system_state = state;
 	usermodehelper_disable();
 	device_shutdown();
-#ifdef CONFIG_MACH_LGE
-#if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_FHD_INVERSE_PT) || defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
-       mipi_lgit_lcd_off_for_shutdown();
-#endif
-#endif
 }
 /**
  *	kernel_halt - halt the system

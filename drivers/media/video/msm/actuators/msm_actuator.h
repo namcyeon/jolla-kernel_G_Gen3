@@ -109,4 +109,3 @@ struct msm_actuator_ctrl_t *get_actrl(struct v4l2_subdev *sd);
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 11, void __user *)
 
 #endif
-

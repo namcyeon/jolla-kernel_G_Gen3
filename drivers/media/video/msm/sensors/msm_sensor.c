@@ -21,10 +21,10 @@
 //                                                                         
 //                                                                         
 #ifdef CONFIG_MACH_LGE
-#ifdef CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT // this is for Project-G
-//#ifdef CONFIG_FB_MSM_MIPI_LGIT_VIDEO_HD_PT // this is for Project-L05E
+//#ifdef CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT // this is for Project-G
+#ifdef CONFIG_FB_MSM_MIPI_LGIT_VIDEO_HD_PT // this is for Project-L05E
 
-//#define LGIT_IEF_SWITCH
+#define LGIT_IEF_SWITCH
 
 #ifdef LGIT_IEF_SWITCH
 extern int mipi_lgit_lcd_ief_off(void);
@@ -75,6 +75,8 @@ static struct pm_gpio gpio23_param = {
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include "../../../../../arch/arm/mach-msm/lge/awifi/board-awifi.h"
 #include <mach/board_lge.h>
+#include <linux/platform_device.h>
+
 #define MSM_MAINCAM_RST_EN PM8921_GPIO_PM_TO_SYS(27)	//REAR_CAM_RST_N
 #define CAMERA_DEBUG 1
 #define LDBGE(fmt,args...) printk(KERN_EMERG "[CAM/E][ERR] "fmt,##args)
@@ -96,6 +98,19 @@ static struct pm_gpio gpio27_param = {
 #endif
 /*                                                    */
 
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
+/*                                                                                       */
+static int show_cam_sensor(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client;
+	client = to_i2c_client(dev);
+
+	return sprintf(buf, "%s\n", client->name );
+}
+
+static DEVICE_ATTR(sensor, S_IRUGO, show_cam_sensor, NULL);
+/*                                                                                       */
+#endif
 /*=============================================================*/
 void msm_sensor_adjust_frame_lines1(struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -285,15 +300,11 @@ if(sub_cam_id_for_keep_screen_on != -2733){
     if(!strcmp(s_ctrl->sensordata->sensor_name, "ov5693"))
         msleep(100); // OV5693 need to skip 3 or more frames for changing sensor mode. (eg. nonZSL capturing)
     else
-        msleep(10);
+        msleep(50);
 #else
         msleep(10);
 #endif
 /*                                                                                     */
-
-    //                                                                  
-    if(!strcmp(s_ctrl->sensordata->sensor_name, "imx119"))
-	msleep(10); 
 #else
 //                                                                         
 	msleep(20);
@@ -1879,7 +1890,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	pr_err( " %s : lgcam_commit fix AF kernel crash on 130121 [ \n",__func__); /*                                                                    */
 
 /*                                                      */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	rc = gpio_request(MSM_MAINCAM_RST_EN, "MAIN_CAM_RST_EN");
 	if (rc) {
 		LDBGE("%s: PM request gpio failed\n", __func__);
@@ -1946,7 +1957,7 @@ if(lge_get_board_revno() >= HW_REV_C){
 	}
 
 /*                                                      */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	msleep(1);
 	rc = gpio_direction_output(MSM_MAINCAM_RST_EN, 1);
 	msleep(1);
@@ -1973,7 +1984,7 @@ if(lge_get_board_revno() >= HW_REV_C){
 	}
 
 /*                                                      */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	pr_err("%s : mclk: %ldHz\n", __func__, s_ctrl->clk_rate);	/*                                                               */
 	usleep_range(1000, 3000);  //                                                                                                     
 #endif
@@ -2021,7 +2032,7 @@ if(lge_get_board_revno() >= HW_REV_C){
 /*                                                                                                  */
 
 /*                                                      */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	rc = gpio_direction_output(MSM_MAINCAM_RST_EN, 0);
 #endif
 /*                                                    */
@@ -2101,7 +2112,7 @@ if(lge_get_board_revno() >= HW_REV_C){
 /*                                                                                                  */
 
 /*                                                      */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	usleep(5);
 	LDBGI("%s: Revision [%d] MSM_MAINCAM_RST_EN GPIO No.%d\n",__func__, lge_get_board_revno(), MSM_MAINCAM_RST_EN);
 	gpio_direction_output(MSM_MAINCAM_RST_EN, 0 );
@@ -2134,7 +2145,7 @@ if(lge_get_board_revno() >= HW_REV_C){
 /*                                                                                                  */
 
 /*                                                      */
-#if defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	gpio_free(MSM_MAINCAM_RST_EN);
 #endif
 /*                                                    */
@@ -2170,6 +2181,9 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
 	int rc = 0;
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
+	int ret= 0;
+#endif
 	struct msm_sensor_ctrl_t *s_ctrl;
 	CDBG("%s %s_i2c_probe called\n", __func__, client->name);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -2219,6 +2233,17 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 	pr_err("%s %s probe succeeded\n", __func__, client->name);
 	snprintf(s_ctrl->sensor_v4l2_subdev.name,
 		sizeof(s_ctrl->sensor_v4l2_subdev.name), "%s", id->name);
+
+/*                                                                                       */
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
+	ret = device_create_file(&client->dev, &dev_attr_sensor);
+	pr_err("__GY__%s : %s device file create suceeded\n", __func__, client->name) ;
+	if(ret < 0){
+		pr_err("cam sensor sysfs is not created\n");
+		device_remove_file(&client->dev, &dev_attr_sensor);
+		}
+#endif
+	/*                                                                                       */
 	v4l2_i2c_subdev_init(&s_ctrl->sensor_v4l2_subdev, client,
 		s_ctrl->sensor_v4l2_subdev_ops);
 	s_ctrl->sensor_v4l2_subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;

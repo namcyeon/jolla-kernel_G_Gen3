@@ -423,7 +423,7 @@ struct msm_cam_v4l2_device {
 	struct mutex event_lock;
 
 /*                                                                  */
-#if defined(CONFIG_LGE_GK_CAMERA) || defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_LGE_GK_CAMERA) || defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	spinlock_t ion_lock;
 	struct ion_client *client;
@@ -457,7 +457,7 @@ struct msm_cam_config_dev {
 	int domain_num;
 	struct iommu_domain *domain;
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 	struct msm_cam_v4l2_device *pcam;
 #endif
 #endif
@@ -765,7 +765,7 @@ int msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
 int msm_mctl_pp_mctl_divert_done(struct msm_cam_media_controller *p_mctl,
 	void __user *arg);
 /*                                                                  */
-#if !defined(CONFIG_LGE_GK_CAMERA) && !defined(CONFIG_MACH_APQ8064_AWIFI)
+#if !defined(CONFIG_LGE_GK_CAMERA) && !defined(CONFIG_MACH_APQ8064_AWIFI) && !defined(CONFIG_MACH_APQ8064_ALTEV)
 void msm_release_ion_client(struct kref *ref);
 #endif
 /*                                                                */
@@ -791,7 +791,7 @@ void msm_cam_stop_hardware(struct msm_cam_v4l2_device *pcam);
 //                                                                                        
 
 /*                                                                  */
-#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI)
+#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 void msm_camera_v4l2_release_ion_client(struct kref *ref);
 struct ion_client *msm_camera_v4l2_get_ion_client(struct msm_cam_v4l2_device *pcam);

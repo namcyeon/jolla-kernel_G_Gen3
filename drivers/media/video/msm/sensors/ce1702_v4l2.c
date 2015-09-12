@@ -1029,7 +1029,7 @@ enable_clk_failed:
 #if defined(CONFIG_MACH_APQ8064_GVAR_CMCC)|| defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
 	rc = gpio_direction_output(ISP_RST, 0);
 #else
-#if defined(CONFIG_MACH_APQ8064_GKKT) || defined(CONFIG_MACH_APQ8064_GKSK) || defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_GKATT) || defined(CONFIG_MACH_APQ8064_GVKT) || defined(CONFIG_MACH_APQ8064_GKGLOBAL)
+#if defined(CONFIG_MACH_APQ8064_GKKT) || defined(CONFIG_MACH_APQ8064_GKSK) || defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_GKATT) || defined(CONFIG_MACH_APQ8064_GVKT) || defined(CONFIG_MACH_APQ8064_GKGLOBAL) || defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
 	if(lge_bd_rev >= HW_REV_C ||lge_bd_rev == HW_REV_1_0){
 		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
 		rc = gpio_direction_output(ISP_RST, 0);
@@ -1393,7 +1393,7 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 					//ce1702_store_isp_eventlog();
 				}
 
-				if(result == 0x08){
+				if(result == 0x08){                  
 					isPreviewMode = 1;
 					isSingleCaptureMode = 0;
 					isTMSMode = 0;
@@ -2462,7 +2462,7 @@ int8_t ce1702_set_wb_setting(struct msm_sensor_ctrl_t *s_ctrl, uint8_t wb)
 #else
 			data[1] = 0x05;
 			LDBGI("%s: setting CAMERA_WB_FLUORESCENT for Global (Osram) value = %d\n", __func__, data[1]);
-#endif
+#endif			
 			break;
 		case CAMERA_WB_CLOUDY_DAYLIGHT:
 			LDBGI("%s: setting CAMERA_WB_CLOUDY_DAYLIGHT\n", __func__);
@@ -3218,7 +3218,7 @@ int8_t ce1702_set_manual_scene_mode(struct msm_sensor_ctrl_t *s_ctrl, int32_t sc
 		if(rc < 0) {
 			LDBGI("%s: ce1702_i2c_write failed(1). Fail to apply scene mode [%d]!!\n", __func__, scene_mode);
 			return FALSE;
-		}
+		}    
 		ce1702_scene_mode = scene_mode;
 	}
 	return rc;
@@ -3258,7 +3258,7 @@ int8_t ce1702_set_model_name(void)
 	model_name = "LG-E988"; //GK OPEN TW
 #endif
 #if defined(CONFIG_MACH_APQ8064_GKSHBSG) || defined(CONFIG_MACH_APQ8064_GKOPENSG) || defined(CONFIG_MACH_APQ8064_GKMONSG) || defined(CONFIG_MACH_APQ8064_GKSTLSG)
-	model_name = "LG-E988";
+	model_name = "LG-E988"; 
 #endif
 #ifdef CONFIG_MACH_APQ8064_GKOPENEU
 	model_name = "LG-E986";  //GK OPEN EU
@@ -3276,10 +3276,10 @@ int8_t ce1702_set_model_name(void)
 	model_name = "LG-E989";  //GK VIV BR
 #endif
 #if defined(CONFIG_MACH_APQ8064_GKOPENESA) || defined(CONFIG_MACH_APQ8064_GKOPENAME) || defined(CONFIG_MACH_APQ8064_GKOPENMY) || defined(CONFIG_MACH_APQ8064_GKOPENZA) || defined(CONFIG_MACH_APQ8064_GKOPENID) || defined(CONFIG_MACH_APQ8064_GKORIIL)  || defined(CONFIG_MACH_APQ8064_GKCLCZA)
-	model_name = "LG-E988";
+	model_name = "LG-E988";  
 #endif
 #if defined(CONFIG_MACH_APQ8064_GKOPENIL) || defined(CONFIG_MACH_APQ8064_GKCCMIL) || defined(CONFIG_MACH_APQ8064_GKMIRIL) || defined(CONFIG_MACH_APQ8064_GKPCLIL) || defined(CONFIG_MACH_APQ8064_GKOPENTH)
-	model_name = "LG-E989";
+	model_name = "LG-E989";  
 #endif
 #ifdef CONFIG_MACH_APQ8064_GVDCM
 	model_name = "L-04E";
@@ -3293,7 +3293,7 @@ int8_t ce1702_set_model_name(void)
 
 	memset(data, 0, sizeof(data));
 	data[0] = 0x06;	// Model
-	data[1] = strlen(model_name);
+	data[1] = strlen(model_name)+1;/*                                                                                                       */
 	for(i=0;i<strlen(model_name);i++)
 		data[2+i] = model_name[i];
 	data[2+i+1] ='\0';
@@ -3305,7 +3305,7 @@ int8_t ce1702_set_model_name(void)
 
 	memset(data, 0, sizeof(data));
 	data[0] = 0x05;	// Maker
-	data[1] = strlen(maker_name);
+	data[1] = strlen(maker_name)+1;/*                                                                                                       */
 	for(i=0;i<strlen(maker_name);i++)
 		data[2+i] = maker_name[i];
 	data[2+i+1] ='\0';
@@ -3440,18 +3440,18 @@ int8_t ce1702_set_WDR(struct msm_sensor_ctrl_t *s_ctrl, int32_t wdr_mode)
 		LDBGI("%s: Fail to read isp status \n", __func__);
 		rc = - EIO;
 	}
-
+	
 	switch(wdr_mode) {
 		case CE1702_STATUS_OFF:
 			pdata[0] = 0x00;
-			uvdata[0] = 0x03;
-			uvdata[1] = 0x00;
+			uvdata[0] = 0x03; 
+			uvdata[1] = 0x00;	
 			break;
-
+			
 		case CE1702_STATUS_ON:
 			pdata[0] = 0x01;
-			uvdata[0] = 0x03;
-			uvdata[1] = 0x05;
+			uvdata[0] = 0x03; 
+			uvdata[1] = 0x05;	
 			break;
 		}
 
@@ -3463,7 +3463,7 @@ int8_t ce1702_set_WDR(struct msm_sensor_ctrl_t *s_ctrl, int32_t wdr_mode)
 		LDBGE("%s: ce1702_i2c_write failed(1).  Fail to apply WDR[%d]\n", __func__, wdr_mode);
 		return FALSE;
 	}
-
+	
 	rc = ce1702_i2c_write(ce1702_s_interface_ctrl->sensor_i2c_addr, 0x3D, uvdata, 2);
 	if(rc<0) {
 		LDBGE("%s: ce1702_i2c_write failed(1).  Fail to apply UV-MAP[%d]\n", __func__, uvdata[1]);
@@ -3484,9 +3484,9 @@ int8_t ce1702_set_WDR(struct msm_sensor_ctrl_t *s_ctrl, int32_t wdr_mode)
 			LDBGE("%s: ce1702_i2c_read failed \n", __func__);
 		LDBGI("%s: verifying... cnt=%d rc=%d\n", __func__, cnt, rc);
 		cnt++;
-	} while ( (res != 0) && (cnt < 100) );
+	} while ( (res != 0) && (cnt < 100) );	
 
-#if 0
+#if 0	
 	//rdata[0] = 0x00;
 	rc = ce1702_i2c_read(ce1702_s_interface_ctrl->sensor_i2c_addr, 0x87, NULL, 0, wdrdata, 3);
 	if (rc < 0)
