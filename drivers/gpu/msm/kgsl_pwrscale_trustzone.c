@@ -30,7 +30,7 @@
 #define TZ_GOVERNOR_PERFORMANCE 0
 #define TZ_GOVERNOR_ONDEMAND    1
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
-#define TZ_GOVERNOR_SIMPLE	2
+#define TZ_GOVERNOR_SIMPLE     2
 #endif
 
 struct tz_priv {
@@ -38,7 +38,6 @@ struct tz_priv {
 	unsigned int no_switch_cnt;
 	unsigned int skip_cnt;
 	struct kgsl_power_stats bin;
-	unsigned int idle_dcvs;
 };
 spinlock_t tz_lock;
 
@@ -55,32 +54,24 @@ spinlock_t tz_lock;
 #define SKIP_COUNTER		500
 #define TZ_RESET_ID		0x3
 #define TZ_UPDATE_ID		0x4
-#define TZ_INIT_ID		0x6
 
+#ifdef CONFIG_MSM_SCM
 /* Trap into the TrustZone, and call funcs there. */
-static int __secure_tz_entry2(u32 cmd, u32 val1, u32 val2)
+static int __secure_tz_entry(u32 cmd, u32 val, u32 id)
 {
 	int ret;
 	spin_lock(&tz_lock);
-	/* sync memory before sending the commands to tz*/
 	__iowmb();
-	ret = scm_call_atomic2(SCM_SVC_IO, cmd, val1, val2);
+	ret = scm_call_atomic2(SCM_SVC_IO, cmd, val, id);
 	spin_unlock(&tz_lock);
 	return ret;
 }
-
-static int __secure_tz_entry3(u32 cmd, u32 val1, u32 val2,
-				u32 val3)
+#else
+static int __secure_tz_entry(u32 cmd, u32 val, u32 id)
 {
-	int ret;
-	spin_lock(&tz_lock);
-	/* sync memory before sending the commands to tz*/
-	__iowmb();
-	ret = scm_call_atomic3(SCM_SVC_IO, cmd, val1, val2,
-				val3);
-	spin_unlock(&tz_lock);
-	return ret;
+	return 0;
 }
+#endif /* CONFIG_MSM_SCM */
 
 static ssize_t tz_governor_show(struct kgsl_device *device,
 				struct kgsl_pwrscale *pwrscale,
@@ -105,24 +96,18 @@ static ssize_t tz_governor_store(struct kgsl_device *device,
 				struct kgsl_pwrscale *pwrscale,
 				 const char *buf, size_t count)
 {
-	char str[20];
 	struct tz_priv *priv = pwrscale->priv;
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
-	int ret;
-
-	ret = sscanf(buf, "%20s", str);
-	if (ret != 1)
-		return -EINVAL;
 
 	mutex_lock(&device->mutex);
 
-	if (!strncmp(str, "ondemand", 8))
+	if (!strncmp(buf, "ondemand", 8))
 		priv->governor = TZ_GOVERNOR_ONDEMAND;
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
-	else if (!strncmp(str, "simple", 6))
+	 else if (!strncmp(buf, "simple", 6))
 		priv->governor = TZ_GOVERNOR_SIMPLE;
 #endif
-	else if (!strncmp(str, "performance", 11))
+	else if (!strncmp(buf, "performance", 11))
 		priv->governor = TZ_GOVERNOR_PERFORMANCE;
 
 	if (priv->governor == TZ_GOVERNOR_PERFORMANCE)
@@ -149,7 +134,7 @@ static void tz_wake(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 	if (device->state != KGSL_STATE_NAP &&
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
 		(priv->governor == TZ_GOVERNOR_ONDEMAND ||
-		 priv->governor == TZ_GOVERNOR_SIMPLE))
+		priv->governor == TZ_GOVERNOR_SIMPLE))
 #else
 		priv->governor == TZ_GOVERNOR_ONDEMAND)
 #endif
@@ -244,55 +229,18 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 	 */
 	if (priv->bin.busy_time > CEILING) {
 		val = -1;
-	} else if (priv->idle_dcvs) {
+	} else {
 		idle = priv->bin.total_time - priv->bin.busy_time;
 		idle = (idle > 0) ? idle : 0;
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
-		if (priv->governor == TZ_GOVERNOR_SIMPLE)
-			val = simple_governor(device, idle);
-		else
-			val = __secure_tz_entry2(TZ_UPDATE_ID, idle,
-				device->id);
+	if (priv->governor == TZ_GOVERNOR_SIMPLE)
+		val = simple_governor(device, idle);
+	else
+		val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
 #else
-		val = __secure_tz_entry2(TZ_UPDATE_ID, idle, device->id);
-#endif
-	} else {
-		if (pwr->step_mul > 1)
-#ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
-			if (priv->governor == TZ_GOVERNOR_SIMPLE) {
-				idle = priv->bin.total_time -
-					priv->bin.busy_time;
-				idle = (idle > 0) ? idle : 0;
-				val = simple_governor(device, idle);
-			} else
-				val = __secure_tz_entry3(TZ_UPDATE_ID,
-					(pwr->active_pwrlevel + 1)/2,
-					priv->bin.total_time,
-					priv->bin.busy_time);
-#else
-			val = __secure_tz_entry3(TZ_UPDATE_ID,
-				(pwr->active_pwrlevel + 1)/2,
-				priv->bin.total_time, priv->bin.busy_time);
-#endif
-		else
-#ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
-			if (priv->governor == TZ_GOVERNOR_SIMPLE) {
-				idle = priv->bin.total_time -
-					priv->bin.busy_time;
-				idle = (idle > 0) ? idle : 0;
-				val = simple_governor(device, idle);
-			} else
-				val = __secure_tz_entry3(TZ_UPDATE_ID,
-					pwr->active_pwrlevel,
-					priv->bin.total_time,
-					priv->bin.busy_time);
-#else
-			val = __secure_tz_entry3(TZ_UPDATE_ID,
-				pwr->active_pwrlevel,
-				priv->bin.total_time, priv->bin.busy_time);
+		val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
 #endif
 	}
-
 	priv->bin.total_time = 0;
 	priv->bin.busy_time = 0;
 
@@ -322,7 +270,7 @@ static void tz_sleep(struct kgsl_device *device,
 	priv->no_switch_cnt = 0;
 	priv->bin.total_time = 0;
 	priv->bin.busy_time = 0;
-	
+
 	/* Make sure the GPU frequency drops. */
 	kgsl_pwrctrl_pwrlevel_change(device, pwr->min_pwrlevel);
 }
@@ -330,33 +278,16 @@ static void tz_sleep(struct kgsl_device *device,
 #ifdef CONFIG_MSM_SCM
 static int tz_init(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 {
-	int i = 0, j = 1, ret = 0;
 	struct tz_priv *priv;
-	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
-	unsigned int tz_pwrlevels[KGSL_MAX_PWRLEVELS + 1];
 
 	priv = pwrscale->priv = kzalloc(sizeof(struct tz_priv), GFP_KERNEL);
 	if (pwrscale->priv == NULL)
 		return -ENOMEM;
 
-	priv->idle_dcvs = 0;
 	priv->governor = TZ_GOVERNOR_SIMPLE;
 	spin_lock_init(&tz_lock);
 	kgsl_pwrscale_policy_add_files(device, pwrscale, &tz_attr_group);
-	for (i = 0; i < pwr->num_pwrlevels - 1; i++) {
-		if (i == 0)
-			tz_pwrlevels[j] = pwr->pwrlevels[i].gpu_freq;
-		else if (pwr->pwrlevels[i].gpu_freq !=
-				pwr->pwrlevels[i - 1].gpu_freq) {
-			j++;
-			tz_pwrlevels[j] = pwr->pwrlevels[i].gpu_freq;
-		}
-	}
-	tz_pwrlevels[0] = j;
-	ret = scm_call(SCM_SVC_DCVS, TZ_INIT_ID, tz_pwrlevels,
-				sizeof(tz_pwrlevels), NULL, 0);
-	if (ret)
-		priv->idle_dcvs = 1;
+
 	return 0;
 }
 #else
