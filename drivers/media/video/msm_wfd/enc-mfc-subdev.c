@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012-2013, Linux Foundation. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,8 @@
 
 #define VID_ENC_MAX_ENCODER_CLIENTS 1
 #define MAX_NUM_CTRLS 20
+#define V4L2_FRAME_FLAGS (V4L2_BUF_FLAG_KEYFRAME | V4L2_BUF_FLAG_PFRAME | \
+		V4L2_BUF_FLAG_BFRAME | V4L2_QCOM_BUF_FLAG_CODECCONFIG)
 
 static long venc_fill_outbuf(struct v4l2_subdev *sd, void *arg);
 
@@ -180,6 +182,7 @@ static void venc_cb(u32 event, u32 status, void *info, u32 size, void *handle,
 		vbuf->v4l2_planes[0].bytesused =
 			frame_data->data_len;
 
+		vbuf->v4l2_buf.flags &= ~(V4L2_FRAME_FLAGS);
 		switch (frame_data->frame) {
 		case VCD_FRAME_I:
 		case VCD_FRAME_IDR:
@@ -194,6 +197,9 @@ static void venc_cb(u32 event, u32 status, void *info, u32 size, void *handle,
 		default:
 			break;
 		}
+
+		if (frame_data->flags & VCD_FRAME_FLAG_CODECCONFIG)
+			vbuf->v4l2_buf.flags |= V4L2_QCOM_BUF_FLAG_CODECCONFIG;
 
 		vbuf->v4l2_buf.timestamp =
 			ns_to_timeval(frame_data->time_stamp * NSEC_PER_USEC);
@@ -1956,6 +1962,7 @@ err:
 static long venc_fill_outbuf(struct v4l2_subdev *sd, void *arg)
 {
 	int rc = 0;
+	u32 ion_flag = 0;
 	struct venc_inst *inst = sd->dev_priv;
 	struct video_client_ctx *client_ctx = &inst->venc_client;
 	struct mem_region *mregion = arg;
@@ -1963,6 +1970,7 @@ static long venc_fill_outbuf(struct v4l2_subdev *sd, void *arg)
 	unsigned long kernel_vaddr, phy_addr, user_vaddr;
 	int pmem_fd;
 	struct file *file;
+	struct ion_handle *buff_handle = NULL;
 	s32 buffer_index = -1;
 
 	if (inst->streaming) {
@@ -1975,9 +1983,14 @@ static long venc_fill_outbuf(struct v4l2_subdev *sd, void *arg)
 			WFD_MSG_ERR("Address lookup failed\n");
 			goto err;
 		}
+		ion_flag = vidc_get_fd_info(client_ctx, BUFFER_TYPE_OUTPUT,
+				pmem_fd, kernel_vaddr, buffer_index,
+				&buff_handle);
+
 		vcd_frame.virtual = (u8 *) kernel_vaddr;
 		vcd_frame.frm_clnt_data = mregion->cookie;
 		vcd_frame.alloc_len = mregion->size;
+		vcd_frame.buff_ion_handle = buff_handle;
 
 		rc = vcd_fill_output_buffer(client_ctx->vcd_handle, &vcd_frame);
 		if (rc)
@@ -2059,6 +2072,14 @@ static long venc_alloc_recon_buffers(struct v4l2_subdev *sd, void *arg)
 				= ion_alloc(client_ctx->user_ion_client,
 			control.size, SZ_8K, heap_mask, ion_flags);
 
+			if (IS_ERR_OR_NULL(
+				client_ctx->recon_buffer_ion_handle[i])) {
+				WFD_MSG_ERR("%s() :WFD ION alloc failed\n",
+					__func__);
+				rc = -ENOMEM;
+				goto bail_out;
+			}
+
 			ctrl->kernel_virtual_addr = ion_map_kernel(
 				client_ctx->user_ion_client,
 				client_ctx->recon_buffer_ion_handle[i]);
@@ -2081,8 +2102,8 @@ static long venc_alloc_recon_buffers(struct v4l2_subdev *sd, void *arg)
 				rc = ion_map_iommu(client_ctx->user_ion_client,
 					client_ctx->recon_buffer_ion_handle[i],
 					VIDEO_DOMAIN, VIDEO_MAIN_POOL, SZ_4K,
-					0, &phy_addr, (unsigned long *)&len,
-					0, 0);
+					ctrl->buffer_size * 2, &phy_addr,
+					(unsigned long *)&len, 0, 0);
 				 if (rc || !phy_addr) {
 					WFD_MSG_ERR(
 						"ion map iommu failed, rc = %d, phy_addr = 0x%lx\n",
@@ -2116,26 +2137,54 @@ static long venc_alloc_recon_buffers(struct v4l2_subdev *sd, void *arg)
 	return rc;
 unmap_ion_iommu:
 	if (!inst->secure) {
-		if (client_ctx->recon_buffer_ion_handle[i]) {
+		if (!IS_ERR_OR_NULL(
+			client_ctx->recon_buffer_ion_handle[i])) {
 			ion_unmap_iommu(client_ctx->user_ion_client,
 				client_ctx->recon_buffer_ion_handle[i],
 				VIDEO_DOMAIN, VIDEO_MAIN_POOL);
 		}
 	}
 unmap_ion_alloc:
-	if (client_ctx->recon_buffer_ion_handle[i]) {
+	if (!IS_ERR_OR_NULL(client_ctx->recon_buffer_ion_handle[i])) {
 		ion_unmap_kernel(client_ctx->user_ion_client,
 			client_ctx->recon_buffer_ion_handle[i]);
-		ctrl->kernel_virtual_addr = NULL;
-		ctrl->physical_addr = NULL;
+		client_ctx->recon_buffer[i].kernel_virtual_addr = NULL;
+		client_ctx->recon_buffer[i].physical_addr = NULL;
+		client_ctx->recon_buffer[i].user_virtual_addr = NULL;
 	}
 free_ion_alloc:
-	if (client_ctx->recon_buffer_ion_handle[i]) {
+	if (!IS_ERR_OR_NULL(client_ctx->recon_buffer_ion_handle[i])) {
 		ion_free(client_ctx->user_ion_client,
 			client_ctx->recon_buffer_ion_handle[i]);
 		client_ctx->recon_buffer_ion_handle[i] = NULL;
 	}
-	WFD_MSG_ERR("Failed to allo recon buffers\n");
+
+bail_out:
+
+	WFD_MSG_ERR("Failed to alloc recon buffers\n");
+
+	for (--i; i >= 0; i--) {
+		if (!inst->secure) {
+			if (!IS_ERR_OR_NULL(
+				client_ctx->recon_buffer_ion_handle[i])) {
+				ion_unmap_iommu(client_ctx->user_ion_client,
+					client_ctx->recon_buffer_ion_handle[i],
+					VIDEO_DOMAIN, VIDEO_MAIN_POOL);
+			}
+		}
+		if (!IS_ERR_OR_NULL(client_ctx->recon_buffer_ion_handle[i])) {
+			ion_unmap_kernel(client_ctx->user_ion_client,
+				client_ctx->recon_buffer_ion_handle[i]);
+				client_ctx->recon_buffer[i].kernel_virtual_addr = NULL;
+				client_ctx->recon_buffer[i].physical_addr = NULL;
+				client_ctx->recon_buffer[i].user_virtual_addr = NULL;
+		}
+		if (!IS_ERR_OR_NULL(client_ctx->recon_buffer_ion_handle[i])) {
+			ion_free(client_ctx->user_ion_client,
+			client_ctx->recon_buffer_ion_handle[i]);
+			client_ctx->recon_buffer_ion_handle[i] = NULL;
+		}
+	}
 err:
 	return rc;
 }
@@ -2263,7 +2312,7 @@ static long venc_free_recon_buffers(struct v4l2_subdev *sd, void *arg)
 			if (rc)
 				WFD_MSG_ERR("Failed to free recon buffer\n");
 
-			if (IS_ERR_OR_NULL(
+			if (!IS_ERR_OR_NULL(
 				client_ctx->recon_buffer_ion_handle[i])) {
 				if (!inst->secure) {
 					ion_unmap_iommu(
@@ -2431,7 +2480,7 @@ static long venc_get_property(struct v4l2_subdev *sd, void *arg)
 
 long venc_mmap(struct v4l2_subdev *sd, void *arg)
 {
-	struct venc_inst *inst = sd->dev_priv;
+	struct venc_inst *inst = NULL;
 	struct mem_region_map *mmap = arg;
 	struct mem_region *mregion = NULL;
 	unsigned long rc = 0, size = 0;
@@ -2445,6 +2494,7 @@ long venc_mmap(struct v4l2_subdev *sd, void *arg)
 		return -EINVAL;
 	}
 
+	inst = sd->dev_priv;
 	mregion = mmap->mregion;
 	if (mregion->size % SZ_4K != 0) {
 		WFD_MSG_ERR("Memregion not aligned to %d\n", SZ_4K);
@@ -2476,17 +2526,18 @@ long venc_mmap(struct v4l2_subdev *sd, void *arg)
 
 long venc_munmap(struct v4l2_subdev *sd, void *arg)
 {
-	struct venc_inst *inst = sd->dev_priv;
+	struct venc_inst *inst = NULL;
 	struct mem_region_map *mmap = arg;
 	struct mem_region *mregion = NULL;
 	if (!sd) {
 		WFD_MSG_ERR("Subdevice required for %s\n", __func__);
 		return -EINVAL;
-	} else if (!mregion) {
+	} else if (!mmap || !mmap->mregion) {
 		WFD_MSG_ERR("Memregion required for %s\n", __func__);
 		return -EINVAL;
 	}
 
+	inst = sd->dev_priv;
 	mregion = mmap->mregion;
 	if (!inst->secure) {
 		ion_unmap_iommu(mmap->ion_client, mregion->ion_handle,
