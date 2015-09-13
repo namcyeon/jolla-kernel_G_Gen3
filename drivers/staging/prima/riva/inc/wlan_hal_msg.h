@@ -4947,7 +4947,6 @@ typedef enum
    ePNO_MODE_IMMEDIATE,
    ePNO_MODE_ON_SUSPEND,
    ePNO_MODE_ON_RESUME,
-   ePNO_MODE_DELAY,
    ePNO_MODE_MAX = WLAN_HAL_MAX_ENUM_SIZE
 } ePNOMode;
 
@@ -5599,9 +5598,6 @@ typedef PACKED_PRE struct PACKED_POST
 
   /* Beacon Early Termination Interval */
   tANI_U32 uBETInterval; 
-
-  /* MAX LI for modulated DTIM */
-  tANI_U32 uMaxLIModulatedDTIM;
 }tSetPowerParamsType, *tpSetPowerParamsType;
 
 typedef PACKED_PRE struct PACKED_POST
@@ -5648,7 +5644,6 @@ typedef enum {
     RATECTRL           = 21,
     WOW                = 22,
     WLAN_ROAM_SCAN_OFFLOAD = 23,
-    EXTENDED_NSOFFLOAD_SLOT = 24,
     //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
